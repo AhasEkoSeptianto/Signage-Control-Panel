@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MJS Desktop Client (Electron)</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 24px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background-color: #0b0f19;
+        color: #f1f5f9;
+      }
+      .card {
+        background: #111827;
+        border: 1px solid #1f2937;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 16px;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(16, 185, 129, 0.15);
+        color: #34d399;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: #10b981;
+      }
+      h1 {
+        font-size: 20px;
+        margin-top: 0;
+        margin-bottom: 8px;
+      }
+      p {
+        color: #94a3b8;
+        font-size: 13px;
+        line-height: 1.5;
+        margin: 0 0 12px 0;
+      }
+      .log-box {
+        background: #030712;
+        border: 1px solid #1f2937;
+        border-radius: 8px;
+        padding: 12px;
+        height: 240px;
+        overflow-y: auto;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 12px;
+        color: #cbd5e1;
+      }
+      .log-item {
+        margin-bottom: 8px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #1e293b;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h1>MJS Desktop Client (Electron)</h1>
+          <p>Terhubung ke Next.js WebSocket Server di <code>ws://localhost:3000/ws</code></p>
+        </div>
+        <div class="badge">
+          <div class="dot"></div>
+          Online & Ready
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size: 14px; margin-top: 0; color: #94a3b8;">Log Perintah & Event Masuk:</h2>
+      <div id="logs" class="log-box">
+        <div class="log-item" style="color: #64748b;">
+          [System] Menunggu perintah atau pesan dari Next.js Web Dashboard...
+        </div>
+      </div>
+    </div>
+
+    <script>
+      if (window.desktopHub) {
+        window.desktopHub.onStatusChange((status) => {
+          const badge = document.querySelector(".badge");
+          const dot = document.querySelector(".dot");
+          if (status === "connected") {
+            badge.style.color = "#34d399";
+            badge.style.background = "rgba(16, 185, 129, 0.15)";
+            badge.style.borderColor = "rgba(16, 185, 129, 0.3)";
+            dot.style.backgroundColor = "#10b981";
+            badge.innerHTML = '<div class="dot"></div> Online & Ready';
+          } else {
+            badge.style.color = "#f87171";
+            badge.style.background = "rgba(239, 68, 68, 0.15)";
+            badge.style.borderColor = "rgba(239, 68, 68, 0.3)";
+            dot.style.backgroundColor = "#ef4444";
+            badge.innerHTML = '<div class="dot" style="background:#ef4444"></div> Terputus (Reconnecting...)';
+          }
+        });
+
+        window.desktopHub.onCommandReceived((command) => {
+          const logBox = document.getElementById("logs");
+          const div = document.createElement("div");
+          div.className = "log-item";
+          div.innerHTML = `<span style="color: #38bdf8;">[${new Date().toLocaleTimeString()}]</span> <strong>Perintah Diterima:</strong> <code>${command.command}</code><br/><pre style="margin:4px 0 0 0; color:#94a3b8; font-size:11px;">${JSON.stringify(command.args || {}, null, 2)}</pre>`;
+          logBox.prepend(div);
+        });
+      }
+    </script>
+  </body>
+</html>
