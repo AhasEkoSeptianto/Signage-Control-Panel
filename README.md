@@ -5,7 +5,7 @@ Arsitektur monolit modern dan terintegrasi untuk ekosistem **Digital Signage Ent
 1. **Next.js 15 (App Router & React 19)** sebagai Web Admin Dashboard & REST API.
 2. **Unified WebSocket Server (`/ws`)** untuk komunikasi bidirectional berkecepatan tinggi antara server dan client.
 3. **Electron Desktop Player Client (JavaScript Murni)** sebagai node player layar digital signage yang dapat menerima push konten secara instan.
-4. **Dual-Layer Persistence (Supabase + Local JSON Fallback)** untuk keandalan data perangkat dan katalog konten secara offline maupun online.
+4. **Supabase Database (PostgreSQL)** sebagai pusat persistensi data tunggal untuk perangkat (*devices*), konten (*contents*), dan riwayat perintah (*desktop_commands*).
 
 ---
 
@@ -40,16 +40,14 @@ Arsitektur monolit modern dan terintegrasi untuk ekosistem **Digital Signage Ent
            | REST / Service Role     | Bi-directional WebSocket
            v                         v
 +-----------------------+   +--------------------------------------------+
-|  Dual-Layer Storage   |   |        Electron Player Node Client         |
-|                       |   |               (electron/)                  |
-| 1. Supabase (Postgres)|   | - Pure JavaScript CommonJS (Instan dev)    |
-|    - devices          |   | - Video Player Looping (HTML5 Video)       |
-|    - contents         |   | - Clean Screen Kiosk Mode (Shortcut 'C')   |
-|    - desktop_commands |   | - Real-time Telemetry (RAM, CPU, Uptime)   |
-| 2. Local Fallback JSON|   | - Multi-Device Identity & Standby Mode     |
-|    - data/devices.json|   +--------------------------------------------+
-|    - data/contents.json
-+-----------------------+
+|  Supabase PostgreSQL  |   |        Electron Player Node Client         |
+|   (Database Tunggal)  |   |               (electron/)                  |
+|                       |   | - Pure JavaScript CommonJS (Instan dev)    |
+| - devices             |   | - Video Player Looping (HTML5 Video)       |
+| - contents            |   | - Clean Screen Kiosk Mode (Shortcut 'C')   |
+| - desktop_commands    |   | - Real-time Telemetry (RAM, CPU, Uptime)   |
+|                       |   | - Multi-Device Identity & Standby Mode     |
++-----------------------+   +--------------------------------------------+
 ```
 
 ---
@@ -58,9 +56,6 @@ Arsitektur monolit modern dan terintegrasi untuk ekosistem **Digital Signage Ent
 
 ```
 MJS-test-stack/
-├── data/                       # Penyimpanan lokal persistent (fallback offline)
-│   ├── contents.json           # Data katalog media & playlist
-│   └── devices.json            # Data registrasi & lokasi perangkat
 ├── electron/                   # Aplikasi Desktop Player (JavaScript Murni)
 │   ├── index.html              # Antarmuka display player & video stage
 │   ├── main.js                 # Electron main process & IPC handlers
@@ -111,10 +106,10 @@ NODE_ENV=development
 # WebSocket Secret Handshake Token
 WS_AUTH_SECRET=secret_electron_handshake_token_12345
 
-# Supabase (Opsional - Jika kosong, sistem otomatis memakai fallback Local JSON)
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
+# Supabase Database Configuration
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
 
 ---

@@ -1,5 +1,3 @@
-import fs from "fs";
-import path from "path";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { Database } from "@/types/database";
 
@@ -14,44 +12,18 @@ export interface DeviceRecord {
 }
 
 type CommandInsert = Database["public"]["Tables"]["desktop_commands"]["Insert"];
-
-const DATA_FILE = path.join(process.cwd(), "data", "devices.json");
-
-function readLocalDevices(): DeviceRecord[] {
-  try {
-    if (!fs.existsSync(DATA_FILE)) {
-      return [];
-    }
-    const raw = fs.readFileSync(DATA_FILE, "utf-8");
-    return JSON.parse(raw);
-  } catch (err) {
-    console.warn("[DeviceService] Error reading local devices.json:", err);
-    return [];
-  }
-}
-
-function writeLocalDevices(devices: DeviceRecord[]) {
-  try {
-    const dir = path.dirname(DATA_FILE);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    fs.writeFileSync(DATA_FILE, JSON.stringify(devices, null, 2), "utf-8");
-  } catch (err) {
-    console.error("[DeviceService] Error writing local devices.json:", err);
-  }
-}
+type DeviceInsert = Database["public"]["Tables"]["devices"]["Insert"];
 
 export class DeviceService {
   /**
-   * Fetch all registered fleet devices (local persistent fallback + Supabase)
+   * Fetch all registered fleet devices directly from Supabase
    */
   static async getDevices(): Promise<DeviceRecord[]> {
-    const localList = readLocalDevices();
     const supabase = getSupabaseAdmin();
 
     if (!supabase) {
-      return localList;
+      console.warn("[DeviceService] Supabase client is not configured.");
+      return [];
     }
 
     try {
@@ -60,13 +32,12 @@ export class DeviceService {
         .select("*")
         .order("id", { ascending: true });
 
-      if (error || !data || data.length === 0) {
-        return localList;
+      if (error || !data) {
+        console.error("[DeviceService] Error fetching devices from Supabase:", error);
+        return [];
       }
 
-      // Merge Supabase with local devices
-      const seenIds = new Set(data.map((d: any) => d.id));
-      const combined: DeviceRecord[] = data.map((d: any) => ({
+      return data.map((d: any) => ({
         id: d.id,
         lokasi: d.lokasi || d.location || "Gedung Utama",
         status: (d.status as any) || "offline",
@@ -75,23 +46,14 @@ export class DeviceService {
         created_at: d.created_at || new Date().toISOString(),
         metadata: d.metadata || {},
       }));
-
-      for (const item of localList) {
-        if (!seenIds.has(item.id)) {
-          combined.push(item);
-        }
-      }
-
-      return combined;
     } catch (err) {
       console.error("[DeviceService] Unexpected error fetching devices:", err);
-      return localList;
+      return [];
     }
   }
 
   /**
-   * Upsert a device when it connects, is added, or updated by admin
-   * Maps solely: id, lokasi, status, last_seen, current_playing (NO nama node)
+   * Upsert a device when it connects, is added, or updated by admin into Supabase
    */
   static async registerOrUpdateDevice(deviceData: {
     id: string;
@@ -103,46 +65,33 @@ export class DeviceService {
     const now = new Date().toISOString();
     const lokasi = deviceData.lokasi || "Gedung Utama";
 
-    // 1. Save to local storage
-    const local = readLocalDevices();
-    const existingIndex = local.findIndex((d) => d.id === deviceData.id);
-
     const record: DeviceRecord = {
       id: deviceData.id,
-      lokasi: deviceData.lokasi !== undefined ? lokasi : (local[existingIndex]?.lokasi || lokasi),
-      status: deviceData.status || (local[existingIndex]?.status || "online"),
+      lokasi,
+      status: deviceData.status || "online",
       last_seen: now,
-      current_playing: deviceData.current_playing || (local[existingIndex]?.current_playing || "Idle / Standby"),
-      created_at: local[existingIndex]?.created_at || now,
-      metadata: deviceData.metadata || local[existingIndex]?.metadata || {},
+      current_playing: deviceData.current_playing || "Idle / Standby",
+      created_at: now,
+      metadata: deviceData.metadata || {},
     };
 
-    if (existingIndex >= 0) {
-      local[existingIndex] = record;
-    } else {
-      local.push(record);
-    }
-    writeLocalDevices(local);
-
-    // 2. Save to Supabase
     const supabase = getSupabaseAdmin();
     if (supabase) {
       try {
+        const updatePayload: DeviceInsert = {
+          id: record.id,
+          lokasi: record.lokasi,
+          status: record.status,
+          last_seen: record.last_seen,
+          current_playing: record.current_playing,
+          metadata: record.metadata as any,
+        };
+
         await supabase
           .from("devices")
-          .upsert(
-            {
-              id: record.id,
-              lokasi: record.lokasi,
-              status: record.status,
-              last_seen: record.last_seen,
-              current_playing: record.current_playing,
-              metadata: record.metadata as any,
-            },
-            { onConflict: "id" }
-          );
+          .upsert(updatePayload, { onConflict: "id" });
       } catch (err) {
-        console.warn("[DeviceService] Supabase upsert error, saved locally:", err);
+        console.error("[DeviceService] Supabase upsert error:", err);
       }
     }
 
@@ -150,36 +99,23 @@ export class DeviceService {
   }
 
   /**
-   * Update device location specifically
+   * Update device location in Supabase
    */
   static async updateLocation(deviceId: string, lokasi: string) {
-    const local = readLocalDevices();
-    const d = local.find((x) => x.id === deviceId);
-    if (d) {
-      d.lokasi = lokasi;
-      writeLocalDevices(local);
-    }
-
     const supabase = getSupabaseAdmin();
     if (supabase) {
       try {
         await supabase.from("devices").update({ lokasi }).eq("id", deviceId);
-      } catch {}
+      } catch (err) {
+        console.error("[DeviceService] Error updating location in Supabase:", err);
+      }
     }
   }
 
   /**
-   * Update currently playing media title in real-time
+   * Update currently playing media title in Supabase in real-time
    */
   static async updateCurrentPlaying(deviceId: string, currentPlaying: string) {
-    const local = readLocalDevices();
-    const d = local.find((x) => x.id === deviceId);
-    if (d) {
-      d.current_playing = currentPlaying;
-      d.last_seen = new Date().toISOString();
-      writeLocalDevices(local);
-    }
-
     const supabase = getSupabaseAdmin();
     if (supabase) {
       try {
@@ -190,24 +126,17 @@ export class DeviceService {
             last_seen: new Date().toISOString(),
           })
           .eq("id", deviceId);
-      } catch {}
+      } catch (err) {
+        console.error("[DeviceService] Error updating current_playing in Supabase:", err);
+      }
     }
   }
 
   /**
-   * Mark a device status (e.g. online, offline, busy)
+   * Mark a device status (e.g. online, offline, busy) in Supabase
    */
   static async updateDeviceStatus(deviceId: string, status: "online" | "offline" | "busy") {
     const now = new Date().toISOString();
-
-    const local = readLocalDevices();
-    const d = local.find((x) => x.id === deviceId);
-    if (d) {
-      d.status = status;
-      d.last_seen = now;
-      writeLocalDevices(local);
-    }
-
     const supabase = getSupabaseAdmin();
     if (supabase) {
       try {
@@ -218,30 +147,30 @@ export class DeviceService {
             last_seen: now,
           })
           .eq("id", deviceId);
-      } catch {}
+      } catch (err) {
+        console.error("[DeviceService] Error updating device status in Supabase:", err);
+      }
     }
   }
 
   /**
-   * Delete device from local and Supabase
+   * Delete device from Supabase
    */
   static async deleteDevice(deviceId: string): Promise<boolean> {
-    const local = readLocalDevices();
-    const filtered = local.filter((d) => d.id !== deviceId);
-    writeLocalDevices(filtered);
-
     const supabase = getSupabaseAdmin();
     if (supabase) {
       try {
-        await supabase.from("devices").delete().eq("id", deviceId);
-      } catch {}
+        const { error } = await supabase.from("devices").delete().eq("id", deviceId);
+        return !error;
+      } catch (err) {
+        console.error("[DeviceService] Error deleting device in Supabase:", err);
+      }
     }
-
-    return true;
+    return false;
   }
 
   /**
-   * Log a command dispatched to an Electron client
+   * Log a command dispatched to an Electron client in Supabase
    */
   static async recordCommand(commandData: CommandInsert) {
     const supabase = getSupabaseAdmin();
@@ -266,7 +195,7 @@ export class DeviceService {
   }
 
   /**
-   * Update the execution result of a command
+   * Update the execution result of a command in Supabase
    */
   static async updateCommandResult(
     commandId: string,
@@ -290,22 +219,5 @@ export class DeviceService {
     } catch (err) {
       console.error("[DeviceService] Unexpected error updating command status:", err);
     }
-  }
-
-  /**
-   * Activity logger
-   */
-  static async logActivity(eventType: string, source: string, details?: unknown) {
-    const supabase = getSupabaseAdmin();
-    if (!supabase) return null;
-
-    try {
-      await (supabase as any).from("activity_logs").insert({
-        event_type: eventType,
-        source,
-        details: details || {},
-        created_at: new Date().toISOString(),
-      });
-    } catch {}
   }
 }

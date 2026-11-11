@@ -117,11 +117,6 @@ export class MessageRouter {
       },
       timestamp: new Date().toISOString(),
     });
-
-    DeviceService.logActivity("client_registered", payload.role, {
-      clientId,
-      meta: payload.deviceMeta,
-    });
   }
 
   /**
