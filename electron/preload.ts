@@ -20,4 +20,8 @@ contextBridge.exposeInMainWorld("desktopHub", {
   close: () => ipcRenderer.send("window:close"),
   switchDevice: (deviceId: string) => ipcRenderer.send("hub:switchDevice", deviceId),
   updateManagedDevices: (deviceIds: string[]) => ipcRenderer.send("hub:updateManagedDevices", deviceIds),
+  connectServer: (options?: { deviceId?: string; serverUrl?: string }) => ipcRenderer.invoke("hub:connect", options),
+  disconnectServer: () => ipcRenderer.invoke("hub:disconnect"),
+  getConnectionStatus: () => ipcRenderer.invoke("hub:getStatus"),
+  logout: () => ipcRenderer.invoke("hub:logout"),
 });

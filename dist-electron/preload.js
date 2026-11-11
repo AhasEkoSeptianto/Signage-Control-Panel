@@ -20,4 +20,8 @@ electron_1.contextBridge.exposeInMainWorld("desktopHub", {
     close: () => electron_1.ipcRenderer.send("window:close"),
     switchDevice: (deviceId) => electron_1.ipcRenderer.send("hub:switchDevice", deviceId),
     updateManagedDevices: (deviceIds) => electron_1.ipcRenderer.send("hub:updateManagedDevices", deviceIds),
+    connectServer: (options) => electron_1.ipcRenderer.invoke("hub:connect", options),
+    disconnectServer: () => electron_1.ipcRenderer.invoke("hub:disconnect"),
+    getConnectionStatus: () => electron_1.ipcRenderer.invoke("hub:getStatus"),
+    logout: () => electron_1.ipcRenderer.invoke("hub:logout"),
 });

@@ -82,14 +82,20 @@ export function SignageHeader({
               </Link>
             </div>
             <div className="p-space-xs border-t border-surface-variant">
-              <Link
-                href="/login"
-                className="flex items-center gap-2 px-space-sm py-1.5 rounded-lg text-body-sm text-error hover:bg-error-container/20 transition-colors"
-                onClick={() => setProfileOpen(false)}
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileOpen(false);
+                  if (typeof window !== "undefined") {
+                    localStorage.removeItem("admin_auth");
+                    window.location.href = "/login";
+                  }
+                }}
+                className="w-full flex items-center gap-2 px-space-sm py-1.5 rounded-lg text-body-sm text-error hover:bg-error-container/20 transition-colors text-left cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[16px]">logout</span>
                 <span>Keluar (Logout)</span>
-              </Link>
+              </button>
             </div>
           </div>
         )}

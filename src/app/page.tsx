@@ -157,6 +157,16 @@ export default function DevicesFleetPage() {
     },
   ]);
 
+  // Cek otentikasi admin: jika belum login, redirect ke /login
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const auth = localStorage.getItem("admin_auth");
+      if (!auth) {
+        window.location.href = "/login";
+      }
+    }
+  }, []);
+
   // Fetch devices from Database API on mount
   useEffect(() => {
     fetch("/api/devices")

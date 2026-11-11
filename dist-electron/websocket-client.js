@@ -16,15 +16,19 @@ class ElectronWebSocketBridge {
     ws = null;
     reconnectTimer = null;
     isDestroyed = false;
+    manualDisconnect = true;
     config;
     deviceId;
-    managedDeviceIds = ["DEV-01", "DEV-02", "DEV-03", "DEV-04", "DEV-05", "DEV-06"];
+    managedDeviceIds = [];
     constructor(config) {
         this.config = config;
         this.deviceId =
             config.deviceId ||
                 process.env.ELECTRON_DEVICE_ID ||
                 "DEV-01";
+    }
+    get isConnected() {
+        return !!this.ws && this.ws.readyState === ws_1.WebSocket.OPEN;
     }
     switchDeviceId(newDeviceId) {
         console.log(`[Electron WS] Switching device identity to: ${newDeviceId}`);
@@ -43,6 +47,7 @@ class ElectronWebSocketBridge {
     connect() {
         if (this.isDestroyed)
             return;
+        this.manualDisconnect = false;
         try {
             this.ws = new ws_1.WebSocket(this.config.serverUrl);
             this.ws.on("open", () => {
@@ -54,17 +59,37 @@ class ElectronWebSocketBridge {
                 this.handleMessage(data.toString());
             });
             this.ws.on("close", (code, reason) => {
-                console.log(`[Electron WS] Disconnected (${code}). Retrying in 4s...`);
+                console.log(`[Electron WS] Disconnected (${code}).`);
                 this.config.onStatusChange?.("disconnected");
-                this.scheduleReconnect();
+                if (!this.manualDisconnect && !this.isDestroyed) {
+                    this.scheduleReconnect();
+                }
             });
             this.ws.on("error", (err) => {
                 console.error("[Electron WS] Error:", err.message);
             });
         }
         catch (err) {
-            this.scheduleReconnect();
+            if (!this.manualDisconnect && !this.isDestroyed) {
+                this.scheduleReconnect();
+            }
         }
+    }
+    disconnect() {
+        console.log("[Electron WS] Manual disconnect requested");
+        this.manualDisconnect = true;
+        if (this.reconnectTimer) {
+            clearTimeout(this.reconnectTimer);
+            this.reconnectTimer = null;
+        }
+        if (this.ws) {
+            try {
+                this.ws.close();
+            }
+            catch { }
+            this.ws = null;
+        }
+        this.config.onStatusChange?.("disconnected");
     }
     register() {
         if (!this.ws || this.ws.readyState !== ws_1.WebSocket.OPEN)

@@ -144,6 +144,7 @@
   </script>
 </head>
 <body class="bg-surface-dim font-body-md text-on-surface antialiased select-none overflow-hidden" onmousemove="handleUserMouseMove()">
+
   <main class="w-full h-screen bg-surface-dim flex items-center justify-center p-space-md box-border transition-all duration-300" id="mainWrapper">
     <div class="flex flex-col w-full h-full justify-between relative overflow-hidden select-none" id="mainContainer">
 
@@ -159,8 +160,8 @@
 
           <!-- Connected Count Badge -->
           <div class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-container text-xs font-code-sm text-on-surface-variant border border-outline-variant/30 shrink-0">
-            <span class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span>
-            <span class="font-medium text-on-surface" id="deviceCountBadge">4 Device Terhubung</span>
+            <span class="w-2 h-2 rounded-full bg-slate-500" id="countBadgeDot"></span>
+            <span class="font-medium text-on-surface" id="deviceCountBadge">0 Device Terhubung (Offline)</span>
           </div>
 
           <!-- Scrollable Connected Devices Strip with quick switch & disconnect button -->
@@ -190,14 +191,20 @@
           <div class="hidden xl:flex items-center gap-3 bg-surface-container/80 backdrop-blur-md px-3 py-1 rounded-lg border border-outline-variant/30 text-code-sm font-code-sm">
             <div class="flex items-center gap-1.5 text-on-surface-variant">
               <span class="material-symbols-outlined text-[15px] text-outline">location_on</span>
-              <span id="headerLocation">Gedung A - Lantai 1</span>
+              <span id="headerLocation">Belum Terhubung</span>
             </div>
             <span class="w-1 h-3 rounded bg-outline-variant"></span>
             <div class="flex items-center gap-1.5">
-              <span class="w-2 h-2 rounded-full bg-tertiary shadow-sm" id="headerStatusDot"></span>
-              <span class="text-[11px] font-bold text-tertiary uppercase tracking-wider" id="headerStatusText">Online</span>
+              <span class="w-2 h-2 rounded-full bg-slate-500 shadow-sm" id="headerStatusDot"></span>
+              <span class="text-[11px] font-bold text-outline uppercase tracking-wider" id="headerStatusText">STANDBY</span>
             </div>
           </div>
+
+          <!-- Action: Putuskan Device Aktif -->
+          <button id="btnHeaderDisconnect" class="hidden px-2.5 py-1.5 rounded-lg text-xs font-code-sm font-medium transition-all text-error hover:bg-error-container/20 border border-error/30 shrink-0 flex items-center gap-1.5 cursor-pointer" onclick="disconnectCurrentDevice()" title="Putuskan koneksi perangkat ini">
+            <span class="material-symbols-outlined text-[16px]">link_off</span>
+            <span class="hidden sm:inline">Putuskan</span>
+          </button>
 
           <!-- Native Window Control IPC buttons -->
           <div class="flex items-center gap-1.5 text-outline pl-2 border-l border-outline-variant/30">
@@ -211,6 +218,38 @@
       <!-- Main Visual Stage: Direct Video Screen (NO Template/Stock Images!) -->
       <div class="flex-1 w-full bg-surface-container-lowest rounded-xl overflow-hidden shadow-2xl border border-outline-variant/20 flex flex-col relative group min-h-[500px] justify-between transition-all duration-300" id="mainStageBox" ondblclick="toggleCleanVideoMode()">
         
+        <!-- Standby Screen (Default saat baru install / belum terhubung) -->
+        <div id="standbyPlaceholder" class="absolute inset-0 z-30 flex flex-col items-center justify-center p-6 text-center bg-surface-container-lowest">
+          <div class="w-16 h-16 rounded-2xl bg-surface-container-high border border-outline-variant/30 flex items-center justify-center text-outline mb-3 shadow-lg">
+            <span class="material-symbols-outlined text-4xl text-primary">cast_connected</span>
+          </div>
+          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container border border-outline-variant/30 text-xs font-code-sm text-outline mb-2">
+            <span class="w-2 h-2 rounded-full bg-slate-500"></span>
+            <span>STATUS: STANDBY (BELUM TERHUBUNG)</span>
+          </div>
+          <h2 class="font-headline-md text-lg font-bold text-on-surface mb-1">Hubungkan Display Signage</h2>
+          <p class="font-body-sm text-xs text-on-surface-variant max-w-sm mb-4 leading-relaxed">Masukkan <strong>Device ID</strong> Anda di bawah ini untuk menghubungkan layar signage ini dengan Admin Dashboard.</p>
+          
+          <form onsubmit="handleQuickConnect(event)" class="w-full max-w-xs flex flex-col gap-2.5">
+            <div class="relative flex items-center">
+              <span class="material-symbols-outlined absolute left-3 text-outline text-[18px]">badge</span>
+              <input id="quickDeviceIdInput" type="text" required placeholder="Device ID (cth: DEV-01)" class="w-full pl-9 pr-3 py-2 bg-surface-container rounded-lg border border-outline-variant/40 text-on-surface placeholder:text-outline font-code-sm text-xs focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary uppercase tracking-wider font-semibold">
+            </div>
+
+            <div class="flex items-center justify-center gap-1.5 flex-wrap">
+              <span class="text-[10px] font-code-sm text-outline">Pilihan Cepat:</span>
+              <button type="button" onclick="setQuickSample('DEV-01')" class="px-2 py-0.5 rounded bg-surface-container-high hover:bg-primary-container hover:text-on-primary-container text-on-surface-variant text-[11px] font-code-sm transition-colors border border-outline-variant/30 cursor-pointer">DEV-01</button>
+              <button type="button" onclick="setQuickSample('DEV-02')" class="px-2 py-0.5 rounded bg-surface-container-high hover:bg-primary-container hover:text-on-primary-container text-on-surface-variant text-[11px] font-code-sm transition-colors border border-outline-variant/30 cursor-pointer">DEV-02</button>
+              <button type="button" onclick="setQuickSample('DEV-03')" class="px-2 py-0.5 rounded bg-surface-container-high hover:bg-primary-container hover:text-on-primary-container text-on-surface-variant text-[11px] font-code-sm transition-colors border border-outline-variant/30 cursor-pointer">DEV-03</button>
+            </div>
+
+            <button type="submit" class="w-full mt-1 py-2 rounded-lg bg-primary-container text-on-primary-container hover:bg-blue-600 font-bold text-xs font-code-sm flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer">
+              <span class="material-symbols-outlined text-[16px]">link</span>
+              <span>Hubungkan Sekarang</span>
+            </button>
+          </form>
+        </div>
+
         <!-- Live Video Element directly playing URL -->
         <div class="absolute inset-0 bg-surface-container-lowest brightness-[0.80] transition-all duration-700 ease-out flex items-center justify-center overflow-hidden" id="contentVisualBg">
           <video id="signageVideo" class="w-full h-full object-cover" loop muted playsinline autoplay></video>
@@ -329,10 +368,14 @@
         <!-- Rendered dynamically -->
       </div>
 
-      <div class="p-3 border-t border-outline-variant/30 bg-surface-container-low/50 flex gap-2">
+      <div class="p-3 border-t border-outline-variant/30 bg-surface-container-low/50 flex flex-col gap-2">
         <button class="w-full py-2.5 rounded-lg bg-primary-container text-on-primary-container text-xs font-code-sm font-bold hover:bg-blue-600 transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer" onclick="openConnectModal(); toggleDeviceDrawer();">
           <span class="material-symbols-outlined text-[16px]">add_circle</span>
           <span>+ Hubungkan Device Baru</span>
+        </button>
+        <button class="w-full py-2 rounded-lg bg-error/10 hover:bg-error/20 text-error border border-error/30 text-xs font-code-sm font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer" onclick="handleDesktopLogout(); toggleDeviceDrawer();">
+          <span class="material-symbols-outlined text-[16px]">logout</span>
+          <span>Keluar dari Akun Desktop</span>
         </button>
       </div>
     </div>
@@ -412,13 +455,9 @@
     };
 
     // Initial Connected Devices state in Electron Player
-    window.devicesState = [
-      { id: 'DEV-01', ...ADMIN_DEVICE_CATALOG['DEV-01'] },
-      { id: 'DEV-02', ...ADMIN_DEVICE_CATALOG['DEV-02'] },
-      { id: 'DEV-03', ...ADMIN_DEVICE_CATALOG['DEV-03'] },
-      { id: 'DEV-04', ...ADMIN_DEVICE_CATALOG['DEV-04'] }
-    ];
-    window.activeDeviceId = 'DEV-01';
+    // Default saat baru install / dibuka: KOSONG (STANDBY / TIDAK TERHUBUNG)
+    window.devicesState = [];
+    window.activeDeviceId = null;
 
     // State for Clean Video Mode
     let isCleanMode = false;
@@ -557,7 +596,19 @@
       if (!container) return;
 
       const countBadge = document.getElementById('deviceCountBadge');
+      const countBadgeDot = document.getElementById('countBadgeDot');
+
+      if (window.devicesState.length === 0) {
+        if (countBadge) countBadge.innerText = '0 Device Terhubung (Offline)';
+        if (countBadgeDot) countBadgeDot.className = 'w-2 h-2 rounded-full bg-slate-500';
+        container.innerHTML = '<span class="text-xs font-code-sm text-outline px-2 py-0.5">Tidak ada node terhubung</span>';
+        renderDrawerList();
+        showStandbyScreen();
+        return;
+      }
+
       if (countBadge) countBadge.innerText = `${window.devicesState.length} Device Terhubung`;
+      if (countBadgeDot) countBadgeDot.className = 'w-2 h-2 rounded-full bg-tertiary animate-pulse';
 
       container.innerHTML = '';
 
@@ -593,6 +644,17 @@
       const drawerContainer = document.getElementById('drawerDeviceList');
       if (!drawerContainer) return;
       drawerContainer.innerHTML = '';
+
+      if (window.devicesState.length === 0) {
+        drawerContainer.innerHTML = `
+          <div class="p-6 text-center text-on-surface-variant flex flex-col items-center justify-center">
+            <span class="material-symbols-outlined text-4xl text-outline mb-2">devices_off</span>
+            <p class="font-code-sm text-xs text-on-surface font-semibold">Belum Ada Perangkat Terhubung</p>
+            <p class="font-body-sm text-[11px] text-outline mt-1 max-w-xs">Masukkan Device ID Anda untuk menghubungkan layar player ke server.</p>
+          </div>
+        `;
+        return;
+      }
 
       window.devicesState.forEach(device => {
         const isActive = device.id === window.activeDeviceId;
@@ -631,9 +693,23 @@
     }
 
     function switchDevice(devId) {
+      if (!devId) {
+        showStandbyScreen();
+        return;
+      }
       window.activeDeviceId = devId;
       const target = window.devicesState.find(d => d.id === devId);
-      if (!target) return;
+      if (!target) {
+        showStandbyScreen();
+        return;
+      }
+
+      // Sembunyikan Standby Placeholder dan tampilkan tombol Putuskan
+      const standby = document.getElementById('standbyPlaceholder');
+      if (standby) standby.classList.add('hidden');
+
+      const btnDisconnect = document.getElementById('btnHeaderDisconnect');
+      if (btnDisconnect) btnDisconnect.classList.remove('hidden');
 
       renderDeviceTabs();
 
@@ -709,9 +785,12 @@
         footerPayload.setAttribute('title', target.url);
       }
 
-      // Notify Electron main process to re-register on WebSocket with new Device ID
+      // Notify Electron main process to connect and re-register on WebSocket with this Device ID
       if (window.desktopHub?.switchDevice) {
         window.desktopHub.switchDevice(devId);
+      }
+      if (window.desktopHub?.connectServer) {
+        window.desktopHub.connectServer({ deviceId: devId });
       }
 
       // Send telemetry to update current_playing in real-time
@@ -724,28 +803,141 @@
       }
     }
 
-    // Disconnect Device and immediately refresh WebSocket state
-    function disconnectDevice(e, devId) {
-      if (e) e.stopPropagation();
-      if (window.devicesState.length <= 1) {
-        alert('Peringatan: Minimal 1 perangkat harus tetap terhubung ke client player.');
+    function setQuickSample(id) {
+      const input = document.getElementById('quickDeviceIdInput');
+      if (input) input.value = id;
+    }
+
+    function handleQuickConnect(e) {
+      if (e) e.preventDefault();
+      const input = document.getElementById('quickDeviceIdInput');
+      const devId = input ? input.value.trim().toUpperCase() : '';
+      if (!devId) return;
+
+      connectDeviceById(devId);
+      if (input) input.value = '';
+    }
+
+    function connectDeviceById(devId) {
+      const rawId = devId.toUpperCase();
+      let devData = ADMIN_DEVICE_CATALOG[rawId];
+      if (!devData) {
+        devData = {
+          location: 'Area Publik - Terdaftar di Dashboard',
+          status: 'online',
+          title: `Tayangan Terjadwal: ${rawId} Signage Feed`,
+          desc: `Konten video playlist default disinkronkan otomatis untuk ${rawId}.`,
+          url: `https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4`
+        };
+      }
+
+      const connectedDevice = {
+        id: rawId,
+        ...devData
+      };
+
+      const exists = window.devicesState.find(d => d.id === rawId);
+      if (!exists) {
+        window.devicesState.push(connectedDevice);
+      }
+
+      localStorage.setItem('electron_active_device_id', rawId);
+
+      if (window.desktopHub?.connectServer) {
+        window.desktopHub.connectServer({ deviceId: rawId });
+      }
+
+      syncWithAdminHub();
+      switchDevice(rawId);
+      showToast(`✓ Berhasil menghubungkan perangkat: ${rawId}`);
+    }
+
+    function disconnectCurrentDevice() {
+      if (!window.activeDeviceId) return;
+      const devId = window.activeDeviceId;
+      const confirmDisconnect = confirm(`Putuskan koneksi perangkat ${devId} dari Client Player?`);
+      if (!confirmDisconnect) return;
+
+      localStorage.removeItem('electron_active_device_id');
+      window.devicesState = window.devicesState.filter(d => d.id !== devId);
+
+      if (window.devicesState.length === 0) {
+        window.activeDeviceId = null;
+        renderDeviceTabs();
+        showStandbyScreen();
+        if (window.desktopHub?.disconnectServer) {
+          window.desktopHub.disconnectServer();
+        }
+        showToast(`✓ Perangkat ${devId} diputuskan. Client dalam mode Standby.`);
         return;
       }
+
+      window.activeDeviceId = window.devicesState[0].id;
+      renderDeviceTabs();
+      switchDevice(window.activeDeviceId);
+      syncWithAdminHub();
+      showToast(`✓ Koneksi perangkat ${devId} telah diputuskan.`);
+    }
+
+    function showStandbyScreen() {
+      const standby = document.getElementById('standbyPlaceholder');
+      if (standby) standby.classList.remove('hidden');
+
+      const videoEl = document.getElementById('signageVideo');
+      if (videoEl) {
+        videoEl.pause();
+        videoEl.src = '';
+      }
+
+      const headerLoc = document.getElementById('headerLocation');
+      if (headerLoc) headerLoc.innerText = 'Belum Terhubung';
+
+      const headerStatusDot = document.getElementById('headerStatusDot');
+      if (headerStatusDot) headerStatusDot.className = 'w-2 h-2 rounded-full bg-slate-500 shadow-sm';
+
+      const headerStatusText = document.getElementById('headerStatusText');
+      if (headerStatusText) {
+        headerStatusText.className = 'text-[11px] font-bold text-outline uppercase tracking-wider';
+        headerStatusText.innerText = 'STANDBY';
+      }
+
+      const countBadge = document.getElementById('deviceCountBadge');
+      if (countBadge) countBadge.innerText = '0 Device Terhubung (Offline)';
+
+      const countBadgeDot = document.getElementById('countBadgeDot');
+      if (countBadgeDot) countBadgeDot.className = 'w-2 h-2 rounded-full bg-slate-500';
+
+      const btnDisconnect = document.getElementById('btnHeaderDisconnect');
+      if (btnDisconnect) btnDisconnect.classList.add('hidden');
+    }
+
+    // Disconnect Device from tabs / drawer
+    function disconnectDevice(e, devId) {
+      if (e) e.stopPropagation();
 
       const confirmDisconnect = confirm(`Putuskan koneksi perangkat ${devId} dari Client Player?`);
       if (!confirmDisconnect) return;
 
-      // 1. Remove from local state
       window.devicesState = window.devicesState.filter(d => d.id !== devId);
-      if (window.activeDeviceId === devId) {
-        window.activeDeviceId = window.devicesState[0].id;
+      if (window.devicesState.length === 0) {
+        localStorage.removeItem('electron_active_device_id');
+        window.activeDeviceId = null;
+        renderDeviceTabs();
+        showStandbyScreen();
+        if (window.desktopHub?.disconnectServer) {
+          window.desktopHub.disconnectServer();
+        }
+        showToast(`✓ Semua perangkat telah diputuskan.`);
+        return;
       }
 
-      // 2. Refresh tabs and switch to remaining active
+      if (window.activeDeviceId === devId) {
+        window.activeDeviceId = window.devicesState[0].id;
+        localStorage.setItem('electron_active_device_id', window.activeDeviceId);
+      }
+
       renderDeviceTabs();
       switchDevice(window.activeDeviceId);
-
-      // 3. Sync immediately with WebSocket server so Admin Dashboard switches device to OFFLINE
       syncWithAdminHub();
       showToast(`✓ Koneksi perangkat ${devId} telah diputuskan.`);
     }
@@ -798,37 +990,9 @@
         return;
       }
 
-      const exists = window.devicesState.find(d => d.id.toUpperCase() === rawId);
-      if (exists) {
-        alert(`Perangkat dengan Device ID "${rawId}" sudah terhubung.`);
-        switchDevice(rawId);
-        closeConnectModal();
-        return;
-      }
-
-      let newDeviceData = ADMIN_DEVICE_CATALOG[rawId];
-      if (!newDeviceData) {
-        newDeviceData = {
-          location: 'Area Publik - Terdaftar di Dashboard',
-          status: 'online',
-          title: `Tayangan Terjadwal: ${rawId} Signage Feed`,
-          desc: `Konten video playlist default disinkronkan otomatis untuk ${rawId}.`,
-          url: `https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4`
-        };
-      }
-
-      const connectedDevice = {
-        id: rawId,
-        ...newDeviceData
-      };
-
-      window.devicesState.push(connectedDevice);
+      connectDeviceById(rawId);
       closeConnectModal();
       if (idInput) idInput.value = '';
-      
-      syncWithAdminHub();
-      switchDevice(rawId);
-      showToast(`✓ Berhasil menghubungkan perangkat: ${rawId}`);
     }
 
     let isPlaying = true;
@@ -1020,13 +1184,18 @@
       });
     }
 
-    // Initial load
+    // Initial load: Default saat baru install adalah TIDAK TERHUBUNG
     renderDeviceTabs();
-    switchDevice('DEV-01');
-    setTimeout(() => {
-      syncWithAdminHub();
-      fetchLiveDeviceLocations();
-    }, 600);
+    const savedDeviceId = localStorage.getItem('electron_active_device_id');
+    if (savedDeviceId) {
+      connectDeviceById(savedDeviceId);
+      setTimeout(() => {
+        syncWithAdminHub();
+        fetchLiveDeviceLocations();
+      }, 600);
+    } else {
+      showStandbyScreen();
+    }
   </script>
 </body>
 </html>

@@ -52,6 +52,16 @@ export default function ContentMediaPage() {
     );
   }, [contents, searchQuery]);
 
+  // Cek otentikasi admin: jika belum login, redirect ke /login
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const auth = localStorage.getItem("admin_auth");
+      if (!auth) {
+        window.location.href = "/login";
+      }
+    }
+  }, []);
+
   // Fetch contents and devices from persistent backend on mount
   useEffect(() => {
     setIsLoading(true);

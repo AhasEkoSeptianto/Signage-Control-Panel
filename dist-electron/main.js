@@ -82,28 +82,19 @@ electron_1.ipcMain.on("hub:telemetry", (_event, data) => {
         });
     }
 });
-electron_1.app.whenReady().then(() => {
-    createWindow();
-    // Inisialisasi koneksi WebSocket ke Next.js Server
-    hubBridge = new websocket_client_1.ElectronWebSocketBridge({
-        serverUrl: wsServerUrl,
-        secretToken: "secret_electron_handshake_token_12345",
-        deviceId: activeDeviceId,
-        onCommand: (cmd) => {
-            if (mainWindow && !mainWindow.isDestroyed()) {
-                mainWindow.webContents.send("hub:command", cmd);
-            }
-        },
-        onStatusChange: (status) => {
-            if (mainWindow && !mainWindow.isDestroyed()) {
-                mainWindow.webContents.send("hub:status", status);
-            }
-        },
-    });
-    hubBridge.connect();
-    // Kirim data telemetri berkala (CPU, RAM, dan Current Playing realtime) ke server setiap 5 detik
+// Helper untuk memulai koneksi telemetri dan websocket
+function startConnection(options) {
+    if (options?.deviceId) {
+        activeDeviceId = options.deviceId;
+        hubBridge?.switchDeviceId(options.deviceId);
+    }
+    console.log(`[Electron Main] Memulai koneksi ke Hub Server untuk ${activeDeviceId}...`);
+    hubBridge?.connect();
+    // Mulai kirim telemetri berkala hanya setelah terhubung
+    if (telemetryTimer)
+        clearInterval(telemetryTimer);
     telemetryTimer = setInterval(() => {
-        if (hubBridge) {
+        if (hubBridge && hubBridge.isConnected) {
             const freeMem = os_1.default.freemem();
             const totalMem = os_1.default.totalmem();
             const usedMem = totalMem - freeMem;
@@ -124,6 +115,52 @@ electron_1.app.whenReady().then(() => {
             });
         }
     }, 5000);
+}
+// Helper untuk menghentikan koneksi telemetri dan websocket
+function stopConnection() {
+    console.log(`[Electron Main] Memutus koneksi Hub Server...`);
+    if (telemetryTimer) {
+        clearInterval(telemetryTimer);
+        telemetryTimer = null;
+    }
+    hubBridge?.disconnect();
+}
+// IPC Handlers untuk kontrol koneksi eksplisit dari antarmuka
+electron_1.ipcMain.handle("hub:connect", (_event, options) => {
+    startConnection(options);
+    return true;
+});
+electron_1.ipcMain.handle("hub:disconnect", () => {
+    stopConnection();
+    return true;
+});
+electron_1.ipcMain.handle("hub:getStatus", () => {
+    return hubBridge?.isConnected ? "connected" : "disconnected";
+});
+electron_1.ipcMain.handle("hub:logout", () => {
+    stopConnection();
+    return true;
+});
+electron_1.app.whenReady().then(() => {
+    createWindow();
+    // Inisialisasi bridge WebSocket ke Next.js Server (DEFAULT: BELUM TERHUBUNG)
+    hubBridge = new websocket_client_1.ElectronWebSocketBridge({
+        serverUrl: wsServerUrl,
+        secretToken: "secret_electron_handshake_token_12345",
+        deviceId: activeDeviceId,
+        onCommand: (cmd) => {
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send("hub:command", cmd);
+            }
+        },
+        onStatusChange: (status) => {
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send("hub:status", status);
+            }
+        },
+    });
+    // CATATAN: Default saat aplikasi baru install/start adalah TIDAK terhubung.
+    // hubBridge.connect() HANYA dipanggil saat operator login atau menekan Hubungkan.
     electron_1.app.on("activate", () => {
         if (electron_1.BrowserWindow.getAllWindows().length === 0) {
             createWindow();
@@ -131,8 +168,7 @@ electron_1.app.whenReady().then(() => {
     });
 });
 electron_1.app.on("before-quit", () => {
-    if (telemetryTimer)
-        clearInterval(telemetryTimer);
+    stopConnection();
     if (hubBridge)
         hubBridge.destroy();
 });

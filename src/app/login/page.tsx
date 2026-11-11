@@ -24,9 +24,21 @@ export default function AdminLoginPage() {
     // Simulated auth verification
     setTimeout(() => {
       setIsLoading(false);
+      // Simpan session admin di localStorage
+      if (typeof window !== "undefined") {
+        localStorage.setItem(
+          "admin_auth",
+          JSON.stringify({
+            email,
+            token: "admin_jwt_session_" + Date.now(),
+            role: "administrator",
+            loggedInAt: new Date().toISOString(),
+          })
+        );
+      }
       // Route to dashboard
       router.push("/");
-    }, 900);
+    }, 600);
   };
 
   return (
