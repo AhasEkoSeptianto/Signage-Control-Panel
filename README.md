@@ -68,6 +68,12 @@ Buka terminal baru di direktori yang sama:
 npm electron:dev
 ```
 
+Atau bisa juga packaging menjadi .exe agar bisa dipakai windows
+
+```bash
+npm electron:dist
+```
+
 Simulator ini akan:
 
 - Terhubung ke server WebSocket dan melakukan registrasi handshake.
