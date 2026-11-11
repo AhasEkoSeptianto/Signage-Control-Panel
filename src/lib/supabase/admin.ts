@@ -1,30 +1,42 @@
 import { createClient } from "@supabase/supabase-js";
 import { Database } from "@/types/database";
-import { isSupabaseAdminConfigured } from "./is-configured";
+import { isSupabaseConfigured, isSupabaseAdminConfigured } from "./is-configured";
 
-let adminClient: ReturnType<typeof createClient<Database>> | null = null;
+let clientInstance: ReturnType<typeof createClient<Database>> | null = null;
 
 /**
- * Creates or retrieves a Supabase Admin client with the Service Role Key.
- * Bypasses Row Level Security (RLS).
- * MUST ONLY be called server-side (Node.js/WebSocket server).
+ * Creates or retrieves a Supabase client.
+ * Uses the Service Role Key when properly configured to bypass RLS,
+ * or falls back to the Anon Key for client/read access.
  */
 export function getSupabaseAdmin() {
-  if (!isSupabaseAdminConfigured()) {
+  if (clientInstance) return clientInstance;
+
+  if (!isSupabaseConfigured()) {
     return null;
   }
 
-  if (adminClient) return adminClient;
-
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-  adminClient = createClient<Database>(supabaseUrl, serviceRoleKey, {
+  if (isSupabaseAdminConfigured()) {
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    clientInstance = createClient<Database>(supabaseUrl, serviceRoleKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
+    return clientInstance;
+  }
+
+  // Fallback to anon key if service role key is not yet set
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  clientInstance = createClient<Database>(supabaseUrl, anonKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
     },
   });
 
-  return adminClient;
+  return clientInstance;
 }

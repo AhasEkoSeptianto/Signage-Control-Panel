@@ -16,6 +16,7 @@ export interface ClientInfo {
     arch: string;
     appVersion: string;
     osVersion?: string;
+    managedDeviceIds?: string[];
   };
 }
 
@@ -66,11 +67,19 @@ export interface AuthRegisterPayload {
     arch: string;
     appVersion: string;
     osVersion?: string;
+    managedDeviceIds?: string[];
   };
 }
 
 export interface DesktopCommandPayload {
-  command: "OPEN_URL" | "NOTIFY" | "GET_SYSTEM_INFO" | "CUSTOM_ACTION";
+  command:
+    | "OPEN_URL"
+    | "NOTIFY"
+    | "GET_SYSTEM_INFO"
+    | "CUSTOM_ACTION"
+    | "UPDATE_DEVICE_CONFIG"
+    | "PLAY_MEDIA"
+    | (string & {});
   args?: Record<string, unknown>;
   commandId?: string;
 }

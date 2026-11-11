@@ -18,15 +18,17 @@ export function initWebSocketServer(server: HttpServer): WebSocketServer {
 
   // Handle upgrade requests
   server.on("upgrade", (request: IncomingMessage, socket, head) => {
-    const { pathname } = new URL(request.url || "/", `http://${request.headers.host}`);
+    try {
+      const { pathname } = new URL(request.url || "/", "http://localhost");
 
-    // Route only requests directed at /ws or /api/ws
-    if (pathname === "/ws" || pathname === "/api/ws") {
-      wss!.handleUpgrade(request, socket, head, (ws) => {
-        wss!.emit("connection", ws, request);
-      });
-    } else {
-      // Don't interfere with Next.js HMR or other upgrade requests
+      // Route only requests directed at /ws or /api/ws
+      if (pathname === "/ws" || pathname === "/api/ws") {
+        wss!.handleUpgrade(request, socket, head, (ws) => {
+          wss!.emit("connection", ws, request);
+        });
+      }
+    } catch (err) {
+      console.error("[WS Server] Error handling upgrade:", err);
     }
   });
 

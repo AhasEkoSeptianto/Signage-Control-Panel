@@ -29,6 +29,35 @@ export class ConnectionManager {
    */
   public registerClient(socket: WebSocket, info: ClientInfo): void {
     const existing = this.clients.get(socket);
+
+    // If previously registered electron client, detect any removed devices
+    if (existing && existing.info.role === "electron") {
+      const oldIds = new Set<string>();
+      oldIds.add(existing.info.id);
+      if (Array.isArray(existing.info.deviceMeta?.managedDeviceIds)) {
+        existing.info.deviceMeta.managedDeviceIds.forEach((id) => oldIds.add(id));
+      }
+
+      const newIds = new Set<string>();
+      newIds.add(info.id);
+      if (Array.isArray(info.deviceMeta?.managedDeviceIds)) {
+        info.deviceMeta.managedDeviceIds.forEach((id) => newIds.add(id));
+      }
+
+      for (const oldId of oldIds) {
+        if (!newIds.has(oldId)) {
+          this.electronByDeviceId.delete(oldId);
+          console.log(`[WS ConnectionManager] Disconnected device mapping: ${oldId}`);
+          DeviceService.updateDeviceStatus(oldId, "offline");
+          this.broadcastToRole("web", {
+            type: "CLIENT_LEFT",
+            payload: { clientId: oldId, role: "electron" },
+            timestamp: new Date().toISOString(),
+          });
+        }
+      }
+    }
+
     const clientData: ConnectedClient = {
       socket,
       info,
@@ -39,23 +68,24 @@ export class ConnectionManager {
 
     if (info.role === "electron") {
       this.electronByDeviceId.set(info.id, socket);
-      console.log(`[WS ConnectionManager] Electron registered: ${info.id} (${info.deviceMeta?.deviceName || "Unknown"})`);
-
-      // Persist in Supabase
-      if (info.deviceMeta) {
-        DeviceService.registerOrUpdateDevice({
-          id: info.id,
-          device_name: info.deviceMeta.deviceName,
-          platform: info.deviceMeta.platform,
-          arch: info.deviceMeta.arch,
-          app_version: info.deviceMeta.appVersion,
-          status: "online",
-          metadata: {
-            osVersion: info.deviceMeta.osVersion,
-            connectedAt: info.connectedAt,
-          },
-        });
+      if (Array.isArray(info.deviceMeta?.managedDeviceIds)) {
+        for (const devId of info.deviceMeta.managedDeviceIds) {
+          this.electronByDeviceId.set(devId, socket);
+        }
       }
+      console.log(`[WS ConnectionManager] Electron registered: ${info.id} (Managed: ${info.deviceMeta?.managedDeviceIds?.join(", ") || "none"})`);
+
+      // Persist in DeviceService
+      DeviceService.registerOrUpdateDevice({
+        id: info.id,
+        status: "online",
+        metadata: {
+          platform: info.deviceMeta?.platform,
+          arch: info.deviceMeta?.arch,
+          appVersion: info.deviceMeta?.appVersion,
+          connectedAt: info.connectedAt,
+        },
+      });
     } else {
       console.log(`[WS ConnectionManager] Web client connected: ${info.id}`);
     }
@@ -73,9 +103,15 @@ export class ConnectionManager {
 
     if (client.info.role === "electron") {
       this.electronByDeviceId.delete(client.info.id);
+      if (Array.isArray(client.info.deviceMeta?.managedDeviceIds)) {
+        for (const devId of client.info.deviceMeta.managedDeviceIds) {
+          this.electronByDeviceId.delete(devId);
+          DeviceService.updateDeviceStatus(devId, "offline");
+        }
+      }
       console.log(`[WS ConnectionManager] Electron disconnected: ${client.info.id}`);
 
-      // Update Supabase status
+      // Update status to offline
       DeviceService.updateDeviceStatus(client.info.id, "offline");
 
       // Notify web clients
@@ -104,13 +140,19 @@ export class ConnectionManager {
   }
 
   /**
-   * Send a message to a specific Electron device by its ID
+   * Send a message to a specific Electron device by its ID, or broadcast to all
    */
   public sendToElectron(deviceId: string, message: WSMessage): boolean {
+    if (!deviceId || deviceId === "ALL" || deviceId === "BROADCAST") {
+      this.broadcastToRole("electron", message);
+      return true;
+    }
+
     const socket = this.electronByDeviceId.get(deviceId);
     if (!socket) {
-      console.warn(`[WS ConnectionManager] Electron device ${deviceId} not found`);
-      return false;
+      // If not directly mapped, broadcast so multi-device electron player can match internal ID
+      this.broadcastToRole("electron", message);
+      return true;
     }
     return this.send(socket, message);
   }
@@ -158,6 +200,19 @@ export class ConnectionManager {
     const list: ClientInfo[] = [];
     this.clients.forEach((client) => {
       list.push(client.info);
+      if (client.info.role === "electron" && Array.isArray(client.info.deviceMeta?.managedDeviceIds)) {
+        for (const devId of client.info.deviceMeta.managedDeviceIds) {
+          if (devId !== client.info.id) {
+            list.push({
+              id: devId,
+              role: "electron",
+              connectedAt: client.info.connectedAt,
+              lastPing: client.info.lastPing,
+              deviceMeta: client.info.deviceMeta,
+            });
+          }
+        }
+      }
     });
     return list;
   }

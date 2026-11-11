@@ -14,6 +14,13 @@ export function isSupabaseConfigured(): boolean {
 export function isSupabaseAdminConfigured(): boolean {
   if (!isSupabaseConfigured()) return false;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceKey || serviceKey.includes("placeholder")) return false;
+  if (
+    !serviceKey ||
+    serviceKey.includes("placeholder") ||
+    serviceKey === "postgres" ||
+    serviceKey.length < 20
+  ) {
+    return false;
+  }
   return true;
 }

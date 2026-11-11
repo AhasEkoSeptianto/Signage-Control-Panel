@@ -22,15 +22,30 @@ export class ElectronWebSocketBridge {
   private isDestroyed = false;
   private config: ElectronWsConfig;
   private deviceId: string;
+  private managedDeviceIds: string[] = ["DEV-01", "DEV-02", "DEV-03", "DEV-04", "DEV-05", "DEV-06"];
 
   constructor(config: ElectronWsConfig) {
     this.config = config;
     this.deviceId =
       config.deviceId ||
-      `electron-${os
-        .hostname()
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, "-")}`;
+      process.env.ELECTRON_DEVICE_ID ||
+      "DEV-01";
+  }
+
+  public switchDeviceId(newDeviceId: string): void {
+    console.log(`[Electron WS] Switching device identity to: ${newDeviceId}`);
+    this.deviceId = newDeviceId;
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.register();
+    }
+  }
+
+  public setManagedDeviceIds(ids: string[]): void {
+    console.log(`[Electron WS] Updating managed devices:`, ids);
+    this.managedDeviceIds = ids;
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.register();
+    }
   }
 
   public connect(): void {
@@ -79,6 +94,7 @@ export class ElectronWebSocketBridge {
             arch: process.arch,
             appVersion: app.getVersion ? app.getVersion() : "1.0.0",
             osVersion: os.release(),
+            managedDeviceIds: this.managedDeviceIds,
           },
         },
         timestamp: new Date().toISOString(),

@@ -78,7 +78,13 @@ export function useWebSocket() {
               break;
 
             case "CLIENT_LEFT":
-              addLog("CLIENT_LEFT", `Client terputus: ${(msg.payload as any)?.clientId || "Unknown"}`);
+              const leftClientId = (msg.payload as any)?.clientId;
+              addLog("CLIENT_LEFT", `Client terputus: ${leftClientId || "Unknown"}`);
+              if (leftClientId) {
+                setElectronClients((prev) =>
+                  prev.filter((c) => c.id.toUpperCase() !== leftClientId.toUpperCase())
+                );
+              }
               break;
 
             case "DEVICE_STATUS_UPDATE":

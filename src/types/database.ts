@@ -1,6 +1,11 @@
 /**
  * Supabase Database TypeScript Definitions
- * Mirrors the schema in supabase/schema.sql
+ * Mirrors the updated schema in supabase/schema.sql
+ *
+ * Tables:
+ * - devices: id, lokasi, status, last_seen, current_playing, created_at, metadata
+ * - contents: id, judul, tipe, payload/url, created_at
+ * - desktop_commands: id, device_id, command, payload, status, result, error_message, created_at, executed_at
  */
 
 export type Json =
@@ -17,36 +22,63 @@ export interface Database {
       devices: {
         Row: {
           id: string;
-          device_name: string;
-          platform: string;
-          arch: string;
-          app_version: string;
+          lokasi: string;
           status: "online" | "offline" | "busy";
-          last_seen_at: string;
-          created_at: string;
-          metadata: Json;
+          last_seen: string;
+          current_playing?: string | null;
+          created_at?: string | null;
+          metadata?: Json;
         };
         Insert: {
           id: string;
-          device_name: string;
-          platform: string;
-          arch?: string;
-          app_version?: string;
+          lokasi?: string | null;
           status?: "online" | "offline" | "busy";
-          last_seen_at?: string;
+          last_seen?: string;
+          current_playing?: string | null;
           created_at?: string;
           metadata?: Json;
         };
         Update: {
           id?: string;
-          device_name?: string;
-          platform?: string;
-          arch?: string;
-          app_version?: string;
+          lokasi?: string | null;
           status?: "online" | "offline" | "busy";
-          last_seen_at?: string;
+          last_seen?: string;
+          current_playing?: string | null;
           created_at?: string;
           metadata?: Json;
+        };
+        Relationships: [];
+      };
+      contents: {
+        Row: {
+          id: string;
+          judul: string;
+          tipe: string;
+          payload: string;
+          url?: string | null;
+          created_at: string;
+          title?: string | null;
+          type?: string | null;
+        };
+        Insert: {
+          id?: string;
+          judul: string;
+          tipe?: string;
+          payload: string;
+          url?: string | null;
+          created_at?: string;
+          title?: string | null;
+          type?: string | null;
+        };
+        Update: {
+          id?: string;
+          judul?: string;
+          tipe?: string;
+          payload?: string;
+          url?: string | null;
+          created_at?: string;
+          title?: string | null;
+          type?: string | null;
         };
         Relationships: [];
       };
@@ -57,10 +89,10 @@ export interface Database {
           command: string;
           payload: Json;
           status: "pending" | "sent" | "executed" | "failed";
-          result: Json | null;
-          error_message: string | null;
+          result?: Json | null;
+          error_message?: string | null;
           created_at: string;
-          executed_at: string | null;
+          executed_at?: string | null;
         };
         Insert: {
           id?: string;
@@ -84,40 +116,28 @@ export interface Database {
           created_at?: string;
           executed_at?: string | null;
         };
-        Relationships: [];
-      };
-      activity_logs: {
-        Row: {
-          id: string;
-          event_type: string;
-          source: "web" | "electron" | "server";
-          details: Json;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          event_type: string;
-          source: "web" | "electron" | "server";
-          details?: Json;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          event_type?: string;
-          source?: "web" | "electron" | "server";
-          details?: Json;
-          created_at?: string;
-        };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "desktop_commands_device_id_fkey";
+            columns: ["device_id"];
+            isOneToOne: false;
+            referencedRelation: "devices";
+            referencedColumns: ["id"];
+          },
+        ];
       };
     };
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
-    Enums: Record<string, never>;
-    CompositeTypes: Record<string, never>;
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      [_ in never]: never;
+    };
+    Enums: {
+      [_ in never]: never;
+    };
+    CompositeTypes: {
+      [_ in never]: never;
+    };
   };
 }
-
-export type DeviceRow = Database["public"]["Tables"]["devices"]["Row"];
-export type DesktopCommandRow = Database["public"]["Tables"]["desktop_commands"]["Row"];
-export type ActivityLogRow = Database["public"]["Tables"]["activity_logs"]["Row"];

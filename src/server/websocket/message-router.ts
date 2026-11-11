@@ -32,7 +32,6 @@ export class MessageRouter {
   public async handleMessage(socket: WebSocket, rawData: string): Promise<void> {
     try {
       const message: WSMessage = JSON.parse(rawData);
-      const currentClient = this.manager.getClient(socket);
 
       switch (message.type) {
         case "AUTH_REGISTER":
@@ -65,7 +64,6 @@ export class MessageRouter {
           break;
 
         case "BROADCAST_MESSAGE":
-          // Broadcast to all web dashboards
           this.manager.broadcastToRole("web", message);
           break;
 
@@ -78,7 +76,7 @@ export class MessageRouter {
   }
 
   /**
-   * Handle Client Registration (Electron handshake or Web dashboard join)
+   * Handle Client Registration
    */
   private async handleAuthRegister(
     socket: WebSocket,
@@ -87,7 +85,6 @@ export class MessageRouter {
     const payload = message.payload;
     const expectedSecret = process.env.WS_AUTH_SECRET;
 
-    // Validate Electron clients if secret token is configured
     if (payload.role === "electron") {
       if (expectedSecret && payload.secretToken !== expectedSecret) {
         console.warn("[WS Router] Electron client failed authentication: invalid secret token");
@@ -103,7 +100,6 @@ export class MessageRouter {
 
     const clientId = message.senderId || (payload.role === "electron" ? `electron-${Date.now()}` : `web-${Date.now()}`);
 
-    // Register in ConnectionManager
     this.manager.registerClient(socket, {
       id: clientId,
       role: payload.role,
@@ -112,7 +108,6 @@ export class MessageRouter {
       deviceMeta: payload.deviceMeta,
     });
 
-    // Send ACK to client
     this.manager.send(socket, {
       type: "AUTH_SUCCESS",
       payload: {
@@ -123,7 +118,6 @@ export class MessageRouter {
       timestamp: new Date().toISOString(),
     });
 
-    // Log to Supabase
     DeviceService.logActivity("client_registered", payload.role, {
       clientId,
       meta: payload.deviceMeta,
@@ -137,36 +131,39 @@ export class MessageRouter {
     socket: WebSocket,
     message: WSMessage<DesktopCommandPayload>
   ): Promise<void> {
-    const targetDeviceId = message.targetId;
+    const targetDeviceId = message.targetId || "ALL";
+    const command = message.payload.command;
+    const args = message.payload.args as any;
 
-    if (!targetDeviceId) {
-      this.manager.send(socket, {
-        type: "DESKTOP_COMMAND_ACK",
-        payload: { success: false, error: "Missing targetId (device ID)" },
-        correlationId: message.correlationId,
-        timestamp: new Date().toISOString(),
-      });
-      return;
+    // Update state based on command
+    if (command === "UPDATE_DEVICE_CONFIG" && args?.id && args?.lokasi) {
+      await DeviceService.updateLocation(args.id, args.lokasi);
+    }
+    if ((command === "OPEN_URL" || command === "PLAY_MEDIA") && args?.title) {
+      if (targetDeviceId !== "ALL" && targetDeviceId !== "BROADCAST") {
+        await DeviceService.updateCurrentPlaying(targetDeviceId, args.title);
+      }
     }
 
     const commandId = message.payload?.commandId || `cmd-${Date.now()}`;
 
-    // Record command in Supabase
+    // Record command
     await DeviceService.recordCommand({
       id: commandId,
       device_id: targetDeviceId,
-      command: message.payload.command,
-      payload: (message.payload.args as any) || {},
+      command,
+      payload: (args as any) || {},
       status: "sent",
     });
 
-    // Forward to Electron client
+    // Forward to Electron client(s)
     const delivered = this.manager.sendToElectron(targetDeviceId, {
       type: "DESKTOP_COMMAND",
       payload: {
         ...message.payload,
         commandId,
       },
+      targetId: targetDeviceId,
       senderId: message.senderId,
       senderRole: "web",
       correlationId: message.correlationId,
@@ -196,7 +193,6 @@ export class MessageRouter {
 
     console.log(`[WS Router] Received command result for ${commandId}: success=${success}`);
 
-    // Update in Supabase
     await DeviceService.updateCommandResult(
       commandId,
       success ? "executed" : "failed",
@@ -204,7 +200,6 @@ export class MessageRouter {
       error
     );
 
-    // Broadcast result to all web dashboards
     this.manager.broadcastToRole("web", {
       type: "DESKTOP_COMMAND_RESULT",
       payload: message.payload,
@@ -215,7 +210,7 @@ export class MessageRouter {
   }
 
   /**
-   * Handle telemetry status update sent from Electron (e.g. CPU, RAM, uptime)
+   * Handle telemetry status update sent from Electron
    */
   private async handleDeviceStatusUpdate(
     socket: WebSocket,
@@ -224,12 +219,20 @@ export class MessageRouter {
     const client = this.manager.getClient(socket);
     if (!client || client.info.role !== "electron") return;
 
+    const payload = message.payload as any;
+    const deviceId = payload?.deviceId || client.info.id;
+    const currentPlaying = payload?.currentPlaying;
+
+    if (currentPlaying) {
+      DeviceService.updateCurrentPlaying(deviceId, currentPlaying);
+    }
+
     // Relay to web dashboards
     this.manager.broadcastToRole("web", {
       type: "DEVICE_STATUS_UPDATE",
       payload: {
-        deviceId: client.info.id,
-        ...message.payload,
+        deviceId,
+        ...payload,
       },
       senderId: client.info.id,
       timestamp: new Date().toISOString(),

@@ -7,12 +7,17 @@ import { ElectronWebSocketBridge } from "./websocket-client";
 let mainWindow: BrowserWindow | null = null;
 let hubBridge: ElectronWebSocketBridge | null = null;
 let telemetryTimer: NodeJS.Timeout | null = null;
+let currentPlayingTitle = "Video Promo Diskon Spesial";
+let activeDeviceId = "DEV-01";
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 900,
-    height: 650,
-    title: "MJS Desktop Client (Electron)",
+    width: 1280,
+    height: 920,
+    minWidth: 1024,
+    minHeight: 720,
+    title: "SignageHub - Fleet Player Node",
+    backgroundColor: "#031427",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       nodeIntegration: false,
@@ -31,6 +36,58 @@ function createWindow() {
   });
 }
 
+// Window control IPC handlers
+ipcMain.on("window:minimize", () => {
+  mainWindow?.minimize();
+});
+
+ipcMain.on("window:maximize", () => {
+  if (mainWindow?.isMaximized()) {
+    mainWindow.unmaximize();
+  } else {
+    mainWindow?.maximize();
+  }
+});
+
+ipcMain.on("window:close", () => {
+  mainWindow?.close();
+});
+
+ipcMain.on("hub:switchDevice", (_event, deviceId: string) => {
+  activeDeviceId = deviceId;
+  if (hubBridge) {
+    hubBridge.switchDeviceId(deviceId);
+  }
+});
+
+ipcMain.on("hub:updateManagedDevices", (_event, deviceIds: string[]) => {
+  if (hubBridge) {
+    hubBridge.setManagedDeviceIds(deviceIds);
+  }
+});
+
+ipcMain.on("hub:telemetry", (_event, data: any) => {
+  if (data?.currentPlaying) {
+    currentPlayingTitle = data.currentPlaying;
+  }
+  if (data?.deviceId) {
+    activeDeviceId = data.deviceId;
+  }
+
+  if (hubBridge) {
+    hubBridge.send({
+      type: "DEVICE_STATUS_UPDATE",
+      payload: {
+        deviceId: activeDeviceId,
+        currentPlaying: currentPlayingTitle,
+        status: data?.status || "online",
+        ...data,
+      },
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
 app.whenReady().then(() => {
   createWindow();
 
@@ -38,6 +95,7 @@ app.whenReady().then(() => {
   hubBridge = new ElectronWebSocketBridge({
     serverUrl: "ws://localhost:3000/ws",
     secretToken: "secret_electron_handshake_token_12345",
+    deviceId: activeDeviceId,
     onCommand: (cmd) => {
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send("hub:command", cmd);
@@ -52,7 +110,7 @@ app.whenReady().then(() => {
 
   hubBridge.connect();
 
-  // Kirim data telemetri berkala (CPU & RAM) ke server setiap 5 detik
+  // Kirim data telemetri berkala (CPU, RAM, dan Current Playing realtime) ke server setiap 5 detik
   telemetryTimer = setInterval(() => {
     if (hubBridge) {
       const freeMem = os.freemem();
@@ -62,13 +120,15 @@ app.whenReady().then(() => {
       hubBridge.send({
         type: "DEVICE_STATUS_UPDATE",
         payload: {
-          cpuUsage: Math.floor(Math.random() * 30 + 10), // simulasi CPU usage
+          deviceId: activeDeviceId,
+          currentPlaying: currentPlayingTitle,
+          cpuUsage: Math.floor(Math.random() * 25 + 10),
           memoryUsage: {
             usedMb: Math.round(usedMem / (1024 * 1024)),
             totalMb: Math.round(totalMem / (1024 * 1024)),
           },
           uptimeSeconds: Math.floor(process.uptime()),
-          status: "idle",
+          status: "playing",
         },
         timestamp: new Date().toISOString(),
       });

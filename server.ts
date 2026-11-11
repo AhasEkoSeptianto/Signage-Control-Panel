@@ -1,4 +1,5 @@
 import { createServer } from "http";
+import { parse } from "url";
 import next from "next";
 import dotenv from "dotenv";
 import { initWebSocketServer } from "./src/server/websocket/ws-server";
@@ -15,17 +16,27 @@ const port = parseInt(process.env.PORT || "3000", 10);
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
+process.on("uncaughtException", (err) => {
+  console.error("UNCAUGHT EXCEPTION:", err);
+});
+process.on("unhandledRejection", (reason) => {
+  console.error("UNHANDLED REJECTION:", reason);
+});
+
 async function bootstrap() {
   try {
     await app.prepare();
 
     const server = createServer(async (req, res) => {
       try {
-        await handle(req, res);
+        const parsedUrl = parse(req.url || "/", true);
+        await handle(req, res, parsedUrl);
       } catch (err) {
         console.error("Error handling request:", err);
-        res.statusCode = 500;
-        res.end("Internal Server Error");
+        if (!res.headersSent) {
+          res.statusCode = 500;
+          res.end("Internal Server Error");
+        }
       }
     });
 
@@ -34,6 +45,11 @@ async function bootstrap() {
 
     // Initialize Supabase Realtime synchronization listener (if configured)
     RealtimeHubService.init();
+
+    server.once("error", (err) => {
+      console.error("HTTP Server Error:", err);
+      process.exit(1);
+    });
 
     server.listen(port, () => {
       console.log(`> Ready on http://${hostname}:${port}`);

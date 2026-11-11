@@ -15,4 +15,9 @@ contextBridge.exposeInMainWorld("desktopHub", {
   sendTelemetry: (data: any) => {
     ipcRenderer.send("hub:telemetry", data);
   },
+  minimize: () => ipcRenderer.send("window:minimize"),
+  maximize: () => ipcRenderer.send("window:maximize"),
+  close: () => ipcRenderer.send("window:close"),
+  switchDevice: (deviceId: string) => ipcRenderer.send("hub:switchDevice", deviceId),
+  updateManagedDevices: (deviceIds: string[]) => ipcRenderer.send("hub:updateManagedDevices", deviceIds),
 });

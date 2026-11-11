@@ -18,14 +18,27 @@ class ElectronWebSocketBridge {
     isDestroyed = false;
     config;
     deviceId;
+    managedDeviceIds = ["DEV-01", "DEV-02", "DEV-03", "DEV-04", "DEV-05", "DEV-06"];
     constructor(config) {
         this.config = config;
         this.deviceId =
             config.deviceId ||
-                `electron-${os_1.default
-                    .hostname()
-                    .toLowerCase()
-                    .replace(/[^a-z0-9]/g, "-")}`;
+                process.env.ELECTRON_DEVICE_ID ||
+                "DEV-01";
+    }
+    switchDeviceId(newDeviceId) {
+        console.log(`[Electron WS] Switching device identity to: ${newDeviceId}`);
+        this.deviceId = newDeviceId;
+        if (this.ws && this.ws.readyState === ws_1.WebSocket.OPEN) {
+            this.register();
+        }
+    }
+    setManagedDeviceIds(ids) {
+        console.log(`[Electron WS] Updating managed devices:`, ids);
+        this.managedDeviceIds = ids;
+        if (this.ws && this.ws.readyState === ws_1.WebSocket.OPEN) {
+            this.register();
+        }
     }
     connect() {
         if (this.isDestroyed)
@@ -68,6 +81,7 @@ class ElectronWebSocketBridge {
                     arch: process.arch,
                     appVersion: electron_1.app.getVersion ? electron_1.app.getVersion() : "1.0.0",
                     osVersion: os_1.default.release(),
+                    managedDeviceIds: this.managedDeviceIds,
                 },
             },
             timestamp: new Date().toISOString(),
