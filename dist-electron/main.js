@@ -12,7 +12,8 @@ let mainWindow = null;
 let hubBridge = null;
 let telemetryTimer = null;
 let currentPlayingTitle = "Video Promo Diskon Spesial";
-let activeDeviceId = "DEV-01";
+let activeDeviceId = process.env.DEVICE_ID || "DEV-01";
+const wsServerUrl = process.env.WS_SERVER_URL || process.env.HUB_SERVER_URL || "ws://localhost:3000/ws";
 function createWindow() {
     mainWindow = new electron_1.BrowserWindow({
         width: 1280,
@@ -85,7 +86,7 @@ electron_1.app.whenReady().then(() => {
     createWindow();
     // Inisialisasi koneksi WebSocket ke Next.js Server
     hubBridge = new websocket_client_1.ElectronWebSocketBridge({
-        serverUrl: "ws://localhost:3000/ws",
+        serverUrl: wsServerUrl,
         secretToken: "secret_electron_handshake_token_12345",
         deviceId: activeDeviceId,
         onCommand: (cmd) => {

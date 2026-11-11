@@ -12,6 +12,9 @@
 
 # Production
 /build
+/dist
+/dist-electron
+/release
 
 # Misc
 .DS_Store
