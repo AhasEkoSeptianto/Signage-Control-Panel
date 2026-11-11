@@ -22,6 +22,4 @@ contextBridge.exposeInMainWorld("desktopHub", {
   updateManagedDevices: (deviceIds) => ipcRenderer.send("hub:updateManagedDevices", deviceIds),
   connectServer: (options) => ipcRenderer.invoke("hub:connect", options),
   disconnectServer: () => ipcRenderer.invoke("hub:disconnect"),
-  getConnectionStatus: () => ipcRenderer.invoke("hub:getStatus"),
-  logout: () => ipcRenderer.invoke("hub:logout"),
 });

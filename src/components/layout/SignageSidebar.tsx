@@ -23,12 +23,6 @@ export function SignageSidebar({ supabaseConnected = true }: SignageSidebarProps
       icon: "perm_media",
       active: pathname.startsWith("/content"),
     },
-    {
-      label: "Client Simulator",
-      href: "/simulator",
-      icon: "desktop_windows",
-      active: pathname.startsWith("/simulator"),
-    },
   ];
 
   return (

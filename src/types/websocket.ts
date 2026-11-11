@@ -73,11 +73,8 @@ export interface AuthRegisterPayload {
 
 export interface DesktopCommandPayload {
   command:
-    | "OPEN_URL"
-    | "NOTIFY"
-    | "GET_SYSTEM_INFO"
-    | "CUSTOM_ACTION"
     | "UPDATE_DEVICE_CONFIG"
+    | "OPEN_URL"
     | "PLAY_MEDIA"
     | (string & {});
   args?: Record<string, unknown>;

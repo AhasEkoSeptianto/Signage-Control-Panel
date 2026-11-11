@@ -1,6 +1,5 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
-const fs = require("fs");
 const os = require("os");
 const { ElectronWebSocketBridge } = require("./websocket-client");
 
@@ -26,8 +25,7 @@ function createWindow() {
     },
   });
 
-  const htmlPath = path.join(__dirname, "index.html");
-  mainWindow.loadFile(htmlPath);
+  mainWindow.loadFile(path.join(__dirname, "index.html"));
 
   mainWindow.on("closed", () => {
     mainWindow = null;
@@ -96,7 +94,6 @@ function startConnection(options) {
   console.log(`[Electron Main] Memulai koneksi ke Hub Server untuk ${activeDeviceId}...`);
   hubBridge?.connect();
 
-  // Mulai kirim telemetri berkala hanya setelah terhubung
   if (telemetryTimer) clearInterval(telemetryTimer);
   telemetryTimer = setInterval(() => {
     if (hubBridge && hubBridge.isConnected) {
@@ -133,7 +130,7 @@ function stopConnection() {
   hubBridge?.disconnect();
 }
 
-// IPC Handlers untuk kontrol koneksi eksplisit dari antarmuka
+// IPC Handlers untuk kontrol koneksi dari antarmuka
 ipcMain.handle("hub:connect", (_event, options) => {
   startConnection(options);
   return true;
@@ -144,19 +141,10 @@ ipcMain.handle("hub:disconnect", () => {
   return true;
 });
 
-ipcMain.handle("hub:getStatus", () => {
-  return hubBridge?.isConnected ? "connected" : "disconnected";
-});
-
-ipcMain.handle("hub:logout", () => {
-  stopConnection();
-  return true;
-});
-
 app.whenReady().then(() => {
   createWindow();
 
-  // Inisialisasi bridge WebSocket ke Next.js Server (DEFAULT: BELUM TERHUBUNG)
+  // Inisialisasi bridge WebSocket ke Next.js Server (DEFAULT: STANDBY)
   hubBridge = new ElectronWebSocketBridge({
     serverUrl: wsServerUrl,
     secretToken: "secret_electron_handshake_token_12345",

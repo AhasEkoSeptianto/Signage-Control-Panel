@@ -268,15 +268,6 @@ export class DeviceService {
   /**
    * Update the execution result of a command
    */
-  static async updateCommandStatus(
-    commandId: string,
-    status: "executed" | "failed",
-    result?: unknown,
-    errorMessage?: string
-  ) {
-    return this.updateCommandResult(commandId, status, result, errorMessage);
-  }
-
   static async updateCommandResult(
     commandId: string,
     status: "executed" | "failed",

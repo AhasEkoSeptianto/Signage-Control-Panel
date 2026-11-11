@@ -1,5 +1,5 @@
 const { WebSocket } = require("ws");
-const { app, shell, Notification } = require("electron");
+const { app } = require("electron");
 const os = require("os");
 
 class ElectronWebSocketBridge {
@@ -116,53 +116,11 @@ class ElectronWebSocketBridge {
       const message = JSON.parse(rawMessage);
 
       if (message.type === "DESKTOP_COMMAND") {
-        const { command, args, commandId } = message.payload;
+        const { command, commandId } = message.payload;
         console.log(`[Electron WS] Executing Command: ${command}`);
 
-        // Notify UI listener if registered
+        // Notify UI listener in renderer (signage screen plays media directly)
         this.config.onCommand?.(message.payload);
-
-        let result = null;
-        let success = true;
-        let errorMessage;
-
-        try {
-          // Native Desktop Handler Switch
-          switch (command) {
-            case "OPEN_URL":
-              if (args?.url && typeof args.url === "string") {
-                await shell.openExternal(args.url);
-                result = { opened: true, url: args.url };
-              }
-              break;
-
-            case "NOTIFY":
-              if (Notification.isSupported()) {
-                new Notification({
-                  title: args?.title || "Notifikasi Desktop",
-                  body: args?.body || "",
-                }).show();
-                result = { shown: true };
-              }
-              break;
-
-            case "GET_SYSTEM_INFO":
-              result = {
-                hostname: os.hostname(),
-                platform: process.platform,
-                totalMemMb: Math.round(os.totalmem() / 1024 / 1024),
-                freeMemMb: Math.round(os.freemem() / 1024 / 1024),
-                uptime: process.uptime(),
-              };
-              break;
-
-            default:
-              result = { acknowledged: true, command };
-          }
-        } catch (execErr) {
-          success = false;
-          errorMessage = execErr?.message || "Execution failed";
-        }
 
         // Send execution result back to the server
         this.send({
@@ -172,9 +130,8 @@ class ElectronWebSocketBridge {
           correlationId: message.correlationId,
           payload: {
             commandId,
-            success,
-            result,
-            error: errorMessage,
+            success: true,
+            result: { acknowledged: true, command },
           },
           timestamp: new Date().toISOString(),
         });

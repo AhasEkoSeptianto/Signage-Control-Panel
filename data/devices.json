@@ -2,15 +2,15 @@
   {
     "id": "DEV-01",
     "lokasi": "Gedung Utama",
-    "status": "online",
-    "last_seen": "2026-11-11T06:21:01.618Z",
+    "status": "offline",
+    "last_seen": "2026-11-11T07:02:01.073Z",
     "current_playing": "Video Promo Diskon Spesial",
     "created_at": "2026-11-11T02:10:31.076Z",
     "metadata": {
       "platform": "win32",
       "arch": "x64",
       "appVersion": "45.2.3",
-      "connectedAt": "2026-11-11T05:57:19.556Z"
+      "connectedAt": "2026-11-11T06:53:53.835Z"
     }
   },
   {
@@ -76,6 +76,20 @@
       "arch": "x64",
       "appVersion": "45.2.3",
       "connectedAt": "2026-11-11T02:14:17.536Z"
+    }
+  },
+  {
+    "id": "DEV-05",
+    "lokasi": "Gedung Utama",
+    "status": "offline",
+    "last_seen": "2026-11-11T07:02:01.087Z",
+    "current_playing": "Kartun",
+    "created_at": "2026-11-11T07:00:14.013Z",
+    "metadata": {
+      "platform": "win32",
+      "arch": "x64",
+      "appVersion": "45.2.3",
+      "connectedAt": "2026-11-11T07:01:21.766Z"
     }
   }
 ]

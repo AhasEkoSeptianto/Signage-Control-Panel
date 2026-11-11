@@ -252,24 +252,4 @@ export class ConnectionManager {
       }
     });
   }
-
-  /**
-   * Get quick stats for diagnostics / REST API
-   */
-  public getStats() {
-    let electronCount = 0;
-    let webCount = 0;
-
-    this.clients.forEach((client) => {
-      if (client.info.role === "electron") electronCount++;
-      else if (client.info.role === "web") webCount++;
-    });
-
-    return {
-      total: this.clients.size,
-      electronCount,
-      webCount,
-      devices: Array.from(this.electronByDeviceId.keys()),
-    };
-  }
 }

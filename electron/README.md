@@ -1,39 +1,37 @@
-# Integrasi Electron Desktop ke Next.js WebSocket Hub
+# Integrasi Client Electron Desktop ke Next.js WebSocket Hub
 
-Folder ini berisi referensi implementasi untuk menghubungkan aplikasi Electron desktop yang terpisah ke WebSocket Server Next.js.
+Folder ini berisi implementasi client desktop player berbasis **JavaScript murni (CommonJS)** yang terhubung langsung ke WebSocket Server Next.js.
 
-## Cara Pemasangan di Aplikasi Electron Anda:
+---
 
-1. **Install dependensi WebSocket di project Electron:**
-   ```bash
-   npm install ws
-   npm install --save-dev @types/ws
-   ```
+## 🛠️ Arsitektur Client Electron
 
-2. **Inisialisasi di `electron/main.js`:**
-   ```js
-   const { ElectronWebSocketBridge } = require("./websocket-client");
+* [`electron/main.js`](./main.js): Inisialisasi jendela Electron, konfigurasi BrowserWindow, IPC handlers, dan timer telemetri.
+* [`electron/preload.js`](./preload.js): Jembatan aman `contextBridge` untuk meneruskan API ke antarmuka renderer (`index.html`).
+* [`electron/websocket-client.js`](./websocket-client.js): Mesin koneksi WebSocket, *auto-reconnect*, registrasi handshake, dan penerima *push command*.
+* [`electron/index.html`](./index.html): Tampilan antarmuka display player, pemutar video HTML5, kontrol layar bersih (*Clean Mode*), dan *device switcher*.
 
-   app.whenReady().then(() => {
-     // Buat window seperti biasa
-     createWindow();
+---
 
-     // Hubungkan ke Next.js WebSocket Hub
-     const hubBridge = new ElectronWebSocketBridge({
-       serverUrl: "ws://localhost:3000/ws", // atau wss://domain-anda.com/ws di produksi
-       secretToken: "secret_electron_handshake_token_12345", // sesuaikan dengan WS_AUTH_SECRET di .env.local
-     });
+## 🚀 Cara Menjalankan Client
 
-     hubBridge.connect();
+### 1. Mode Development:
+```bash
+npm run electron:dev
+```
+Aplikasi langsung dijalankan menggunakan binary Electron tanpa perlu langkah kompilasi (`tsc`).
 
-     app.on("before-quit", () => {
-       hubBridge.destroy();
-     });
-   });
-   ```
+### 2. Mode Produksi / Packaging Windows:
+```bash
+npm run electron:dist
+```
+Hasil file installer executable (.exe portable & unpacked directory) akan dibuat di dalam folder `release/`.
 
-3. **Perintah Native yang Didukung Secara Default:**
-   - `OPEN_URL`: Membuka browser default OS via `shell.openExternal`.
-   - `NOTIFY`: Menampilkan notifikasi OS asli desktop.
-   - `GET_SYSTEM_INFO`: Membaca CPU, RAM, OS info.
-   - Anda dapat menambahkan handler kustom (misal: kontrol hardware, printer thermal, local file system, scanner barcode, dll.) di switch case `handleMessage` pada `websocket-client.ts`.
+---
+
+## ⌨️ Pintasan Keyboard (Shortcuts)
+
+* **`C`**: Mengaktifkan / menonaktifkan **Mode Layar Bersih (Clean Screen Mode)**. Seluruh badge, kontrol, dan panel navigasi akan disembunyikan untuk menayangkan video secara murni.
+* **`F11`**: Masuk / keluar dari mode **Layar Penuh (Fullscreen Kiosk)**.
+* **`Spasi`**: Jeda (*Pause*) / Putar (*Play*) video.
+* **`Esc`**: Menutup dialog drawer atau keluar dari mode layar bersih.

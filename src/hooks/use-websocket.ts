@@ -176,6 +176,5 @@ export function useWebSocket() {
     clientTelemetry,
     logs,
     sendCommand,
-    reconnect: connect,
   };
 }

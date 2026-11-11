@@ -10,7 +10,6 @@
     "dev:next": "next dev",
     "build": "next build",
     "start": "cross-env NODE_ENV=production tsx server.ts",
-    "mock:electron": "tsx scripts/mock-electron.ts",
     "electron:dev": "node scripts/run-electron.js",
     "electron:dist": "electron-builder --win",
     "lint": "next lint"
