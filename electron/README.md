@@ -10,9 +10,9 @@ Folder ini berisi referensi implementasi untuk menghubungkan aplikasi Electron d
    npm install --save-dev @types/ws
    ```
 
-2. **Inisialisasi di `src/main/index.ts` atau `main.js`:**
-   ```ts
-   import { ElectronWebSocketBridge } from "./websocket-client";
+2. **Inisialisasi di `electron/main.js`:**
+   ```js
+   const { ElectronWebSocketBridge } = require("./websocket-client");
 
    app.whenReady().then(() => {
      // Buat window seperti biasa

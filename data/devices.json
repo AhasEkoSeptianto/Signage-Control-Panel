@@ -2,15 +2,15 @@
   {
     "id": "DEV-01",
     "lokasi": "Gedung Utama",
-    "status": "offline",
-    "last_seen": "2026-11-11T04:44:08.951Z",
-    "current_playing": "pengenalan",
+    "status": "online",
+    "last_seen": "2026-11-11T06:21:01.618Z",
+    "current_playing": "Video Promo Diskon Spesial",
     "created_at": "2026-11-11T02:10:31.076Z",
     "metadata": {
       "platform": "win32",
       "arch": "x64",
-      "appVersion": "0.1.0",
-      "connectedAt": "2026-11-11T04:42:43.163Z"
+      "appVersion": "45.2.3",
+      "connectedAt": "2026-11-11T05:57:19.556Z"
     }
   },
   {

@@ -1,12 +1,12 @@
-import { app, BrowserWindow, ipcMain } from "electron";
-import path from "path";
-import fs from "fs";
-import os from "os";
-import { ElectronWebSocketBridge } from "./websocket-client";
+const { app, BrowserWindow, ipcMain } = require("electron");
+const path = require("path");
+const fs = require("fs");
+const os = require("os");
+const { ElectronWebSocketBridge } = require("./websocket-client");
 
-let mainWindow: BrowserWindow | null = null;
-let hubBridge: ElectronWebSocketBridge | null = null;
-let telemetryTimer: NodeJS.Timeout | null = null;
+let mainWindow = null;
+let hubBridge = null;
+let telemetryTimer = null;
 let currentPlayingTitle = "Video Promo Diskon Spesial";
 let activeDeviceId = process.env.DEVICE_ID || "DEV-01";
 const wsServerUrl = process.env.WS_SERVER_URL || process.env.HUB_SERVER_URL || "ws://localhost:3000/ws";
@@ -26,10 +26,7 @@ function createWindow() {
     },
   });
 
-  const htmlPath = fs.existsSync(path.join(__dirname, "index.html"))
-    ? path.join(__dirname, "index.html")
-    : path.join(__dirname, "../electron/index.html");
-
+  const htmlPath = path.join(__dirname, "index.html");
   mainWindow.loadFile(htmlPath);
 
   mainWindow.on("closed", () => {
@@ -54,20 +51,20 @@ ipcMain.on("window:close", () => {
   mainWindow?.close();
 });
 
-ipcMain.on("hub:switchDevice", (_event, deviceId: string) => {
+ipcMain.on("hub:switchDevice", (_event, deviceId) => {
   activeDeviceId = deviceId;
   if (hubBridge) {
     hubBridge.switchDeviceId(deviceId);
   }
 });
 
-ipcMain.on("hub:updateManagedDevices", (_event, deviceIds: string[]) => {
+ipcMain.on("hub:updateManagedDevices", (_event, deviceIds) => {
   if (hubBridge) {
     hubBridge.setManagedDeviceIds(deviceIds);
   }
 });
 
-ipcMain.on("hub:telemetry", (_event, data: any) => {
+ipcMain.on("hub:telemetry", (_event, data) => {
   if (data?.currentPlaying) {
     currentPlayingTitle = data.currentPlaying;
   }
@@ -90,7 +87,7 @@ ipcMain.on("hub:telemetry", (_event, data: any) => {
 });
 
 // Helper untuk memulai koneksi telemetri dan websocket
-function startConnection(options?: { deviceId?: string; serverUrl?: string }) {
+function startConnection(options) {
   if (options?.deviceId) {
     activeDeviceId = options.deviceId;
     hubBridge?.switchDeviceId(options.deviceId);
@@ -175,9 +172,6 @@ app.whenReady().then(() => {
       }
     },
   });
-
-  // CATATAN: Default saat aplikasi baru install/start adalah TIDAK terhubung.
-  // hubBridge.connect() HANYA dipanggil saat operator login atau menekan Hubungkan.
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {

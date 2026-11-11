@@ -1,43 +1,26 @@
-/**
- * Reference Implementation for Electron Desktop Main Process
- *
- * Copy or adapt this file into your Electron app's `src/main/` or `main.js`.
- */
+const { WebSocket } = require("ws");
+const { app, shell, Notification } = require("electron");
+const os = require("os");
 
-import { WebSocket } from "ws";
-import { app, shell, Notification, ipcMain } from "electron";
-import os from "os";
-
-export interface ElectronWsConfig {
-  serverUrl: string; // e.g. "ws://localhost:3000/ws" or "wss://your-domain.com/ws"
-  secretToken: string;
-  deviceId?: string;
-  onCommand?: (command: { command: string; args?: any; commandId: string }) => void;
-  onStatusChange?: (status: "connected" | "disconnected") => void;
-}
-
-export class ElectronWebSocketBridge {
-  private ws: WebSocket | null = null;
-  private reconnectTimer: NodeJS.Timeout | null = null;
-  private isDestroyed = false;
-  private manualDisconnect = true;
-  private config: ElectronWsConfig;
-  private deviceId: string;
-  private managedDeviceIds: string[] = [];
-
-  constructor(config: ElectronWsConfig) {
+class ElectronWebSocketBridge {
+  constructor(config) {
+    this.ws = null;
+    this.reconnectTimer = null;
+    this.isDestroyed = false;
+    this.manualDisconnect = true;
     this.config = config;
     this.deviceId =
       config.deviceId ||
       process.env.ELECTRON_DEVICE_ID ||
       "DEV-01";
+    this.managedDeviceIds = [];
   }
 
-  public get isConnected(): boolean {
+  get isConnected() {
     return !!this.ws && this.ws.readyState === WebSocket.OPEN;
   }
 
-  public switchDeviceId(newDeviceId: string): void {
+  switchDeviceId(newDeviceId) {
     console.log(`[Electron WS] Switching device identity to: ${newDeviceId}`);
     this.deviceId = newDeviceId;
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
@@ -45,7 +28,7 @@ export class ElectronWebSocketBridge {
     }
   }
 
-  public setManagedDeviceIds(ids: string[]): void {
+  setManagedDeviceIds(ids) {
     console.log(`[Electron WS] Updating managed devices:`, ids);
     this.managedDeviceIds = ids;
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
@@ -53,7 +36,7 @@ export class ElectronWebSocketBridge {
     }
   }
 
-  public connect(): void {
+  connect() {
     if (this.isDestroyed) return;
     this.manualDisconnect = false;
 
@@ -70,7 +53,7 @@ export class ElectronWebSocketBridge {
         this.handleMessage(data.toString());
       });
 
-      this.ws.on("close", (code, reason) => {
+      this.ws.on("close", (code) => {
         console.log(`[Electron WS] Disconnected (${code}).`);
         this.config.onStatusChange?.("disconnected");
         if (!this.manualDisconnect && !this.isDestroyed) {
@@ -88,7 +71,7 @@ export class ElectronWebSocketBridge {
     }
   }
 
-  public disconnect(): void {
+  disconnect() {
     console.log("[Electron WS] Manual disconnect requested");
     this.manualDisconnect = true;
     if (this.reconnectTimer) {
@@ -104,7 +87,7 @@ export class ElectronWebSocketBridge {
     this.config.onStatusChange?.("disconnected");
   }
 
-  private register(): void {
+  register() {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
 
     this.ws.send(
@@ -124,11 +107,11 @@ export class ElectronWebSocketBridge {
           },
         },
         timestamp: new Date().toISOString(),
-      }),
+      })
     );
   }
 
-  private async handleMessage(rawMessage: string): Promise<void> {
+  async handleMessage(rawMessage) {
     try {
       const message = JSON.parse(rawMessage);
 
@@ -139,9 +122,9 @@ export class ElectronWebSocketBridge {
         // Notify UI listener if registered
         this.config.onCommand?.(message.payload);
 
-        let result: unknown = null;
+        let result = null;
         let success = true;
-        let errorMessage: string | undefined;
+        let errorMessage;
 
         try {
           // Native Desktop Handler Switch
@@ -156,8 +139,8 @@ export class ElectronWebSocketBridge {
             case "NOTIFY":
               if (Notification.isSupported()) {
                 new Notification({
-                  title: (args?.title as string) || "Notifikasi Desktop",
-                  body: (args?.body as string) || "",
+                  title: args?.title || "Notifikasi Desktop",
+                  body: args?.body || "",
                 }).show();
                 result = { shown: true };
               }
@@ -176,7 +159,7 @@ export class ElectronWebSocketBridge {
             default:
               result = { acknowledged: true, command };
           }
-        } catch (execErr: any) {
+        } catch (execErr) {
           success = false;
           errorMessage = execErr?.message || "Execution failed";
         }
@@ -201,7 +184,7 @@ export class ElectronWebSocketBridge {
     }
   }
 
-  public send(payload: Record<string, unknown>): boolean {
+  send(payload) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(payload));
       return true;
@@ -209,14 +192,16 @@ export class ElectronWebSocketBridge {
     return false;
   }
 
-  private scheduleReconnect(): void {
+  scheduleReconnect() {
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     this.reconnectTimer = setTimeout(() => this.connect(), 4000);
   }
 
-  public destroy(): void {
+  destroy() {
     this.isDestroyed = true;
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     if (this.ws) this.ws.close();
   }
 }
+
+module.exports = { ElectronWebSocketBridge };

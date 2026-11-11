@@ -3,24 +3,24 @@
  * Exposes safe APIs to the Electron Renderer process
  */
 
-import { contextBridge, ipcRenderer } from "electron";
+const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("desktopHub", {
-  onCommandReceived: (callback: (command: any) => void) => {
+  onCommandReceived: (callback) => {
     ipcRenderer.on("hub:command", (_event, value) => callback(value));
   },
-  onStatusChange: (callback: (status: "connected" | "disconnected") => void) => {
+  onStatusChange: (callback) => {
     ipcRenderer.on("hub:status", (_event, value) => callback(value));
   },
-  sendTelemetry: (data: any) => {
+  sendTelemetry: (data) => {
     ipcRenderer.send("hub:telemetry", data);
   },
   minimize: () => ipcRenderer.send("window:minimize"),
   maximize: () => ipcRenderer.send("window:maximize"),
   close: () => ipcRenderer.send("window:close"),
-  switchDevice: (deviceId: string) => ipcRenderer.send("hub:switchDevice", deviceId),
-  updateManagedDevices: (deviceIds: string[]) => ipcRenderer.send("hub:updateManagedDevices", deviceIds),
-  connectServer: (options?: { deviceId?: string; serverUrl?: string }) => ipcRenderer.invoke("hub:connect", options),
+  switchDevice: (deviceId) => ipcRenderer.send("hub:switchDevice", deviceId),
+  updateManagedDevices: (deviceIds) => ipcRenderer.send("hub:updateManagedDevices", deviceIds),
+  connectServer: (options) => ipcRenderer.invoke("hub:connect", options),
   disconnectServer: () => ipcRenderer.invoke("hub:disconnect"),
   getConnectionStatus: () => ipcRenderer.invoke("hub:getStatus"),
   logout: () => ipcRenderer.invoke("hub:logout"),
