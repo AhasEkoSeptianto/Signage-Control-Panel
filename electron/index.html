@@ -558,7 +558,9 @@
 
     // Fetch live device locations from server API
     function fetchLiveDeviceLocations() {
-      fetch('http://localhost:3000/api/devices')
+      const wsUrl = window.desktopHub?.serverUrl || 'ws://localhost:3000/ws';
+      const httpBase = wsUrl.replace(/^ws:/i, 'http:').replace(/^wss:/i, 'https:').replace(/\/ws\/?$/, '');
+      fetch(`${httpBase}/api/devices`)
         .then(r => r.json())
         .then(data => {
           if (data && data.devices && data.devices.length > 0) {

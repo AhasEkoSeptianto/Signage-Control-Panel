@@ -6,6 +6,7 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("desktopHub", {
+  serverUrl: process.env.WS_SERVER_URL || process.env.HUB_SERVER_URL || "ws://localhost:3000/ws",
   onCommandReceived: (callback) => {
     ipcRenderer.on("hub:command", (_event, value) => callback(value));
   },
