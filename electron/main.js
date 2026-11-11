@@ -3,12 +3,17 @@ const path = require("path");
 const os = require("os");
 const { ElectronWebSocketBridge } = require("./websocket-client");
 
+let appConfig = {};
+try {
+  appConfig = require("./config.json");
+} catch {}
+
 let mainWindow = null;
 let hubBridge = null;
 let telemetryTimer = null;
 let currentPlayingTitle = "Video Promo Diskon Spesial";
 let activeDeviceId = process.env.DEVICE_ID || "DEV-01";
-const wsServerUrl = process.env.WS_SERVER_URL || process.env.HUB_SERVER_URL || "ws://localhost:3000/ws";
+const wsServerUrl = process.env.WS_SERVER_URL || process.env.HUB_SERVER_URL || appConfig.serverUrl || "ws://localhost:3000/ws";
 
 function createWindow() {
   mainWindow = new BrowserWindow({

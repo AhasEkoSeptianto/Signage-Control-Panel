@@ -5,8 +5,15 @@
 
 const { contextBridge, ipcRenderer } = require("electron");
 
+let appConfig = {};
+try {
+  appConfig = require("./config.json");
+} catch {}
+
+const effectiveServerUrl = process.env.WS_SERVER_URL || process.env.HUB_SERVER_URL || appConfig.serverUrl || "ws://localhost:3000/ws";
+
 contextBridge.exposeInMainWorld("desktopHub", {
-  serverUrl: process.env.WS_SERVER_URL || process.env.HUB_SERVER_URL || "ws://localhost:3000/ws",
+  serverUrl: effectiveServerUrl,
   onCommandReceived: (callback) => {
     ipcRenderer.on("hub:command", (_event, value) => callback(value));
   },

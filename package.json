@@ -11,7 +11,9 @@
     "build": "next build",
     "start": "cross-env NODE_ENV=production tsx server.ts",
     "electron:dev": "node scripts/run-electron.js",
-    "electron:dist": "electron-builder --win",
+    "electron:dist": "node scripts/build-electron.js",
+    "electron:dist:toLocalHost": "node scripts/build-electron.js --local",
+    "electron:dist:toRender": "node scripts/build-electron.js --render",
     "lint": "next lint"
   },
   "build": {
