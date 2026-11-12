@@ -11,12 +11,14 @@ export interface ClientInfo {
   lastPing: string;
   // Electron-specific metadata
   deviceMeta?: {
-    deviceName: string;
+    deviceName?: string;
     platform: string; // "win32" | "darwin" | "linux"
-    arch: string;
-    appVersion: string;
+    arch?: string;
+    appVersion?: string;
     osVersion?: string;
     managedDeviceIds?: string[];
+    isSimulator?: boolean;
+    hostname?: string;
   };
 }
 
@@ -62,12 +64,14 @@ export interface AuthRegisterPayload {
   role: ClientRole;
   secretToken?: string;
   deviceMeta?: {
-    deviceName: string;
+    deviceName?: string;
     platform: string;
-    arch: string;
-    appVersion: string;
+    arch?: string;
+    appVersion?: string;
     osVersion?: string;
     managedDeviceIds?: string[];
+    isSimulator?: boolean;
+    hostname?: string;
   };
 }
 
