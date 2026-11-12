@@ -24,16 +24,25 @@ interface EventLogItem {
 }
 
 export default function DevicesFleetPage() {
-  const { status, electronClients, clientTelemetry, logs, sendCommand } = useWebSocket();
+  const { status, electronClients, clientTelemetry, logs, sendCommand } =
+    useWebSocket();
 
   // Search filter
   const [searchTerm, setSearchTerm] = useState("");
 
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [editModalData, setEditModalData] = useState<{ id: string; location: string } | null>(null);
-  const [pushModalData, setPushModalData] = useState<{ id: string; location: string } | null>(null);
-  const [pushUrl, setPushUrl] = useState("https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4");
+  const [editModalData, setEditModalData] = useState<{
+    id: string;
+    location: string;
+  } | null>(null);
+  const [pushModalData, setPushModalData] = useState<{
+    id: string;
+    location: string;
+  } | null>(null);
+  const [pushUrl, setPushUrl] = useState(
+    "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+  );
   const [pushTitle, setPushTitle] = useState("Video Promo Diskon Spesial");
 
   // Form input states for adding device (ID and Lokasi only, NO nama node)
@@ -41,7 +50,11 @@ export default function DevicesFleetPage() {
   const [inputLokasi, setInputLokasi] = useState("");
 
   // Toast notification state
-  const [toast, setToast] = useState<{ message: string; icon: string; isError?: boolean } | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    icon: string;
+    isError?: boolean;
+  } | null>(null);
 
   // Fleet devices state
   const [fleetDevices, setFleetDevices] = useState<DeviceRow[]>([
@@ -92,16 +105,28 @@ export default function DevicesFleetPage() {
       return {
         ...d,
         status: (isOnline ? "ONLINE" : "OFFLINE") as "ONLINE" | "OFFLINE",
-        currentPlaying: isOnline ? livePlaying : (d.status === "OFFLINE" ? "-" : livePlaying),
-        lastSeen: isOnline ? "Just now (WS Live)" : (d.lastSeen === "Just now (WS Live)" ? "Terputus" : d.lastSeen),
+        currentPlaying: isOnline
+          ? livePlaying
+          : d.status === "OFFLINE"
+            ? "-"
+            : livePlaying,
+        lastSeen: isOnline
+          ? "Just now (WS Live)"
+          : d.lastSeen === "Just now (WS Live)"
+            ? "Terputus"
+            : d.lastSeen,
       };
     });
 
     // Also include any connected Electron client that isn't in fleetDevices yet
     electronClients.forEach((client) => {
-      const exists = list.some((d) => d.id.toUpperCase() === client.id.toUpperCase());
+      const exists = list.some(
+        (d) => d.id.toUpperCase() === client.id.toUpperCase(),
+      );
       if (!exists) {
-        const tele = clientTelemetry[client.id] || clientTelemetry[client.id.toUpperCase()];
+        const tele =
+          clientTelemetry[client.id] ||
+          clientTelemetry[client.id.toUpperCase()];
         list.push({
           id: client.id,
           location: `Area Publik (${client.deviceMeta?.platform || "Desktop"} ${client.deviceMeta?.arch || "x64"})`,
@@ -125,7 +150,7 @@ export default function DevicesFleetPage() {
       (d) =>
         d.id.toLowerCase().includes(term) ||
         d.location.toLowerCase().includes(term) ||
-        d.currentPlaying.toLowerCase().includes(term)
+        d.currentPlaying.toLowerCase().includes(term),
     );
   }, [mergedDevices, searchTerm]);
 
@@ -177,11 +202,15 @@ export default function DevicesFleetPage() {
             data.devices.map((d: any) => ({
               id: d.id,
               location: d.lokasi || d.location || "Gedung Utama",
-              status: (d.status === "online" ? "ONLINE" : "OFFLINE") as "ONLINE" | "OFFLINE",
+              status: (d.status === "online" ? "ONLINE" : "OFFLINE") as
+                | "ONLINE"
+                | "OFFLINE",
               currentPlaying: d.current_playing || "Idle / Default",
-              lastSeen: d.last_seen ? new Date(d.last_seen).toLocaleTimeString() : "Just now",
+              lastSeen: d.last_seen
+                ? new Date(d.last_seen).toLocaleTimeString()
+                : "Just now",
               icon: "tv",
-            }))
+            })),
           );
         }
       })
@@ -210,7 +239,11 @@ export default function DevicesFleetPage() {
   }, [logs]);
 
   // Show Toast helper
-  const showToast = (message: string, icon = "check_circle", isError = false) => {
+  const showToast = (
+    message: string,
+    icon = "check_circle",
+    isError = false,
+  ) => {
     setToast({ message, icon, isError });
     setTimeout(() => {
       setToast(null);
@@ -221,14 +254,17 @@ export default function DevicesFleetPage() {
   const totalCount = mergedDevices.length;
   const onlineCount = mergedDevices.filter((d) => d.status === "ONLINE").length;
   const offlineCount = totalCount - onlineCount;
-  const onlinePercentage = totalCount > 0 ? Math.round((onlineCount / totalCount) * 100) : 0;
+  const onlinePercentage =
+    totalCount > 0 ? Math.round((onlineCount / totalCount) * 100) : 0;
 
   // Add Device Handler
   const handleAddDevice = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputLokasi.trim()) return;
 
-    const newId = inputId.trim() || `DEV-${String(fleetDevices.length + 1).padStart(2, "0")}`;
+    const newId =
+      inputId.trim() ||
+      `DEV-${String(fleetDevices.length + 1).padStart(2, "0")}`;
 
     const newDevice: DeviceRow = {
       id: newId,
@@ -289,7 +325,9 @@ export default function DevicesFleetPage() {
 
     // 1. Update local state
     setFleetDevices((prev) =>
-      prev.map((d) => (d.id === targetId ? { ...d, location: updatedLokasi } : d))
+      prev.map((d) =>
+        d.id === targetId ? { ...d, location: updatedLokasi } : d,
+      ),
     );
 
     // 2. Sync to Database API
@@ -368,8 +406,8 @@ export default function DevicesFleetPage() {
     // 2. Update table row current playing immediately
     setFleetDevices((prev) =>
       prev.map((d) =>
-        d.id === pushModalData.id ? { ...d, currentPlaying: pushTitle } : d
-      )
+        d.id === pushModalData.id ? { ...d, currentPlaying: pushTitle } : d,
+      ),
     );
 
     // 3. Persist current_playing to backend
@@ -397,7 +435,10 @@ export default function DevicesFleetPage() {
     ]);
 
     setTimeout(() => {
-      showToast(`Tayangan "${pushTitle}" aktif di ${pushModalData.id}!`, "done_all");
+      showToast(
+        `Tayangan "${pushTitle}" aktif di ${pushModalData.id}!`,
+        "done_all",
+      );
       setPushModalData(null);
     }, 600);
   };
@@ -419,15 +460,20 @@ export default function DevicesFleetPage() {
               <span className="font-code-sm text-code-sm text-primary px-space-xs py-0.5 rounded bg-surface-container font-mono">
                 ws://localhost:3000/ws
               </span>
-              <span className="text-outline text-body-sm font-body-sm hidden sm:inline">•</span>
+              <span className="text-outline text-body-sm font-body-sm hidden sm:inline">
+                •
+              </span>
               <span className="font-body-sm text-body-sm text-on-surface-variant truncate">
-                Lokasi dan Current Playing tersinkronisasi otomatis secara real-time
+                Lokasi dan Current Playing tersinkronisasi otomatis secara
+                real-time
               </span>
             </div>
           </div>
           <div className="flex items-center gap-space-sm">
             <span className="font-code-sm text-code-sm text-tertiary px-space-sm py-1 rounded-full bg-tertiary/10 font-medium flex items-center gap-1">
-              <span className="material-symbols-outlined text-[14px]">sync</span>
+              <span className="material-symbols-outlined text-[14px]">
+                sync
+              </span>
               Realtime Synced: public.devices
             </span>
           </div>
@@ -438,32 +484,52 @@ export default function DevicesFleetPage() {
           {/* Card 1: Total Devices */}
           <div className="bg-surface-container rounded-xl p-space-md flex flex-col justify-between shadow-sm relative overflow-hidden group border border-surface-variant/30">
             <div className="flex items-center justify-between">
-              <span className="font-label-md text-label-md text-on-surface-variant">Total Devices</span>
+              <span className="font-label-md text-label-md text-on-surface-variant">
+                Total Devices
+              </span>
               <span className="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center text-primary">
-                <span className="material-symbols-outlined text-[18px]">devices</span>
+                <span className="material-symbols-outlined text-[18px]">
+                  devices
+                </span>
               </span>
             </div>
             <div className="mt-space-sm flex items-baseline gap-space-xs">
-              <span className="font-headline-xl text-headline-xl text-on-surface">{totalCount}</span>
-              <span className="font-code-sm text-code-sm text-on-surface-variant">device terdaftar</span>
+              <span className="font-headline-xl text-headline-xl text-on-surface">
+                {totalCount}
+              </span>
+              <span className="font-code-sm text-code-sm text-on-surface-variant">
+                device terdaftar
+              </span>
             </div>
             <div className="mt-space-sm flex items-center gap-1">
-              <span className="material-symbols-outlined text-tertiary text-[14px]">check_circle</span>
-              <span className="font-body-sm text-body-sm text-on-surface-variant">Schema public.devices</span>
+              <span className="material-symbols-outlined text-tertiary text-[14px]">
+                check_circle
+              </span>
+              <span className="font-body-sm text-body-sm text-on-surface-variant">
+                Schema public.devices
+              </span>
             </div>
           </div>
 
           {/* Card 2: Online Devices */}
           <div className="bg-surface-container rounded-xl p-space-md flex flex-col justify-between shadow-sm relative overflow-hidden group border border-surface-variant/30">
             <div className="flex items-center justify-between">
-              <span className="font-label-md text-label-md text-on-surface-variant">Online Players</span>
+              <span className="font-label-md text-label-md text-on-surface-variant">
+                Online Players
+              </span>
               <span className="w-8 h-8 rounded-lg bg-tertiary/10 flex items-center justify-center text-tertiary">
-                <span className="material-symbols-outlined text-[18px]">wifi</span>
+                <span className="material-symbols-outlined text-[18px]">
+                  wifi
+                </span>
               </span>
             </div>
             <div className="mt-space-sm flex items-baseline gap-space-xs">
-              <span className="font-headline-xl text-headline-xl text-tertiary">{onlineCount}</span>
-              <span className="font-code-sm text-code-sm text-on-surface-variant">/ {totalCount} aktif</span>
+              <span className="font-headline-xl text-headline-xl text-tertiary">
+                {onlineCount}
+              </span>
+              <span className="font-code-sm text-code-sm text-on-surface-variant">
+                / {totalCount} aktif
+              </span>
             </div>
             <div className="w-full bg-surface-container-high rounded-full h-1.5 mt-space-sm overflow-hidden">
               <div
@@ -476,19 +542,31 @@ export default function DevicesFleetPage() {
           {/* Card 3: Offline Alert */}
           <div className="bg-surface-container rounded-xl p-space-md flex flex-col justify-between shadow-sm relative overflow-hidden group border border-surface-variant/30">
             <div className="flex items-center justify-between">
-              <span className="font-label-md text-label-md text-on-surface-variant">Offline Players</span>
+              <span className="font-label-md text-label-md text-on-surface-variant">
+                Offline Players
+              </span>
               <span className="w-8 h-8 rounded-lg bg-error-container/20 flex items-center justify-center text-error">
-                <span className="material-symbols-outlined text-[18px]">wifi_off</span>
+                <span className="material-symbols-outlined text-[18px]">
+                  wifi_off
+                </span>
               </span>
             </div>
             <div className="mt-space-sm flex items-baseline gap-space-xs">
-              <span className="font-headline-xl text-headline-xl text-error">{offlineCount}</span>
-              <span className="font-code-sm text-code-sm text-on-surface-variant">perlu perhatian</span>
+              <span className="font-headline-xl text-headline-xl text-error">
+                {offlineCount}
+              </span>
+              <span className="font-code-sm text-code-sm text-on-surface-variant">
+                perlu perhatian
+              </span>
             </div>
             <div className="mt-space-sm flex items-center gap-1">
-              <span className="material-symbols-outlined text-error text-[14px]">report_problem</span>
+              <span className="material-symbols-outlined text-error text-[14px]">
+                report_problem
+              </span>
               <span className="font-body-sm text-body-sm text-error">
-                {offlineCount > 0 ? `${offlineCount} device tidak tersambung` : "Semua player aktif"}
+                {offlineCount > 0
+                  ? `${offlineCount} device tidak tersambung`
+                  : "Semua player aktif"}
               </span>
             </div>
           </div>
@@ -496,17 +574,27 @@ export default function DevicesFleetPage() {
           {/* Card 4: WebSocket Events */}
           <div className="bg-surface-container rounded-xl p-space-md flex flex-col justify-between shadow-sm relative overflow-hidden group border border-surface-variant/30">
             <div className="flex items-center justify-between">
-              <span className="font-label-md text-label-md text-on-surface-variant">WebSocket Status</span>
+              <span className="font-label-md text-label-md text-on-surface-variant">
+                WebSocket Status
+              </span>
               <span className="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center text-secondary">
-                <span className="material-symbols-outlined text-[18px]">electric_bolt</span>
+                <span className="material-symbols-outlined text-[18px]">
+                  electric_bolt
+                </span>
               </span>
             </div>
             <div className="mt-space-sm flex items-baseline gap-space-xs">
-              <span className="font-headline-xl text-headline-xl text-secondary">Realtime</span>
-              <span className="font-code-sm text-code-sm text-on-surface-variant">telemetry</span>
+              <span className="font-headline-xl text-headline-xl text-secondary">
+                Realtime
+              </span>
+              <span className="font-code-sm text-code-sm text-on-surface-variant">
+                telemetry
+              </span>
             </div>
             <div className="mt-space-sm flex items-center gap-1 text-on-surface-variant">
-              <span className="font-code-sm text-code-sm font-mono truncate">Latency ~10ms</span>
+              <span className="font-code-sm text-code-sm font-mono truncate">
+                Latency ~10ms
+              </span>
             </div>
           </div>
         </div>
@@ -525,7 +613,8 @@ export default function DevicesFleetPage() {
                 </span>
               </div>
               <p className="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
-                Kelola perangkat signage player, pantau tayangan media secara real-time, dan perbarui lokasi fisik.
+                Kelola perangkat signage player, pantau tayangan media secara
+                real-time, dan perbarui lokasi fisik.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-space-sm">
@@ -545,7 +634,9 @@ export default function DevicesFleetPage() {
                 className="px-space-md py-2 rounded-lg bg-primary-container text-on-primary-container font-label-md text-label-md font-semibold hover:bg-secondary-container transition-colors flex items-center gap-space-xs shadow-sm active:scale-95"
                 onClick={() => setIsAddModalOpen(true)}
               >
-                <span className="material-symbols-outlined text-[18px]">add</span>
+                <span className="material-symbols-outlined text-[18px]">
+                  add
+                </span>
                 <span>+ Tambah Device Baru</span>
               </button>
             </div>
@@ -559,16 +650,24 @@ export default function DevicesFleetPage() {
                   <th className="py-3 px-space-md font-medium">Device ID</th>
                   <th className="py-3 px-space-md font-medium">Lokasi</th>
                   <th className="py-3 px-space-md font-medium">Status</th>
-                  <th className="py-3 px-space-md font-medium">Current Playing</th>
+                  <th className="py-3 px-space-md font-medium">
+                    Current Playing
+                  </th>
                   <th className="py-3 px-space-md font-medium">Last Seen</th>
-                  <th className="py-3 px-space-md font-medium text-right">Quick Actions</th>
+                  <th className="py-3 px-space-md font-medium text-right">
+                    Quick Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y-0 text-body-md font-body-md">
                 {filteredDevices.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-on-surface-variant font-body-sm">
-                      Tidak ada device yang cocok dengan pencarian "{searchTerm}".
+                    <td
+                      colSpan={6}
+                      className="py-8 text-center text-on-surface-variant font-body-sm"
+                    >
+                      Tidak ada device yang cocok dengan pencarian "{searchTerm}
+                      ".
                     </td>
                   </tr>
                 ) : (
@@ -585,14 +684,18 @@ export default function DevicesFleetPage() {
                             <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
                               {device.icon || "tv"}
                             </span>
-                            <span className="font-bold text-primary">{device.id}</span>
+                            <span className="font-bold text-primary">
+                              {device.id}
+                            </span>
                           </div>
                         </td>
 
                         {/* Lokasi */}
                         <td className="py-3.5 px-space-md text-on-surface font-medium text-body-sm">
                           <div className="flex items-center gap-1.5">
-                            <span className="material-symbols-outlined text-[15px] text-tertiary">location_on</span>
+                            <span className="material-symbols-outlined text-[15px] text-tertiary">
+                              location_on
+                            </span>
                             <span>{device.location}</span>
                           </div>
                         </td>
@@ -615,13 +718,17 @@ export default function DevicesFleetPage() {
                         {/* Current Playing (Real-time synced) */}
                         <td className="py-3.5 px-space-md">
                           {device.currentPlaying === "-" ? (
-                            <span className="text-outline font-code-sm text-code-sm">-</span>
+                            <span className="text-outline font-code-sm text-code-sm">
+                              -
+                            </span>
                           ) : (
                             <div className="flex items-center gap-1.5 text-on-surface text-body-sm">
                               <span className="material-symbols-outlined text-[16px] text-secondary">
                                 play_circle
                               </span>
-                              <span className="truncate max-w-[200px] font-medium">{device.currentPlaying}</span>
+                              <span className="truncate max-w-[200px] font-medium">
+                                {device.currentPlaying}
+                              </span>
                             </div>
                           )}
                         </td>
@@ -642,17 +749,24 @@ export default function DevicesFleetPage() {
                               className="p-1.5 rounded-lg bg-primary-container/20 text-primary hover:bg-primary-container hover:text-on-primary-container transition-colors flex items-center justify-center"
                               title="Push Content"
                               onClick={() =>
-                                setPushModalData({ id: device.id, location: device.location })
+                                setPushModalData({
+                                  id: device.id,
+                                  location: device.location,
+                                })
                               }
                             >
-                              <span className="material-symbols-outlined text-[16px]">publish</span>
+                              <span className="material-symbols-outlined text-[16px]">
+                                publish
+                              </span>
                             </button>
                             <a
                               href={`/simulation?deviceId=${encodeURIComponent(device.id)}`}
                               className="p-1.5 rounded-lg text-on-surface-variant hover:bg-tertiary-container/30 hover:text-tertiary transition-colors flex items-center justify-center"
                               title="Buka di Simulasi Player"
                             >
-                              <span className="material-symbols-outlined text-[16px]">desktop_windows</span>
+                              <span className="material-symbols-outlined text-[16px]">
+                                desktop_windows
+                              </span>
                             </a>
                             <button
                               className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors flex items-center justify-center"
@@ -664,14 +778,18 @@ export default function DevicesFleetPage() {
                                 })
                               }
                             >
-                              <span className="material-symbols-outlined text-[16px]">edit</span>
+                              <span className="material-symbols-outlined text-[16px]">
+                                edit
+                              </span>
                             </button>
                             <button
                               className="p-1.5 rounded-lg text-on-surface-variant hover:bg-error-container hover:text-on-error-container transition-colors flex items-center justify-center"
                               title="Delete Device"
                               onClick={() => handleDeleteDevice(device.id)}
                             >
-                              <span className="material-symbols-outlined text-[16px]">delete</span>
+                              <span className="material-symbols-outlined text-[16px]">
+                                delete
+                              </span>
                             </button>
                           </div>
                         </td>
@@ -688,7 +806,9 @@ export default function DevicesFleetPage() {
         <div className="bg-surface-container-low rounded-xl p-space-md shadow-sm flex flex-col gap-space-sm border border-surface-variant/30">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-space-xs">
-              <span className="material-symbols-outlined text-secondary text-[18px]">terminal</span>
+              <span className="material-symbols-outlined text-secondary text-[18px]">
+                terminal
+              </span>
               <span className="font-label-md text-label-md text-on-surface font-semibold">
                 Live Realtime Event Stream
               </span>
@@ -723,7 +843,9 @@ export default function DevicesFleetPage() {
                   >
                     <div className="flex items-center gap-space-sm">
                       <span className={colorMap[log.type]}>{log.time}</span>
-                      <span className="text-primary font-semibold">Device {log.deviceId}</span>
+                      <span className="text-primary font-semibold">
+                        Device {log.deviceId}
+                      </span>
                       <span>{log.message}</span>
                     </div>
                     <span className="text-outline text-body-sm">{log.tag}</span>
@@ -751,14 +873,22 @@ export default function DevicesFleetPage() {
                   className="p-1 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors"
                   onClick={() => setIsAddModalOpen(false)}
                 >
-                  <span className="material-symbols-outlined text-[18px]">close</span>
+                  <span className="material-symbols-outlined text-[18px]">
+                    close
+                  </span>
                 </button>
               </div>
               <p className="font-body-sm text-body-sm text-on-surface-variant">
                 Mendaftarkan perangkat baru ke tabel Postgres{" "}
-                <code className="text-primary font-code-sm font-mono">public.devices</code>.
+                <code className="text-primary font-code-sm font-mono">
+                  public.devices
+                </code>
+                .
               </p>
-              <form className="flex flex-col gap-space-md" onSubmit={handleAddDevice}>
+              <form
+                className="flex flex-col gap-space-md"
+                onSubmit={handleAddDevice}
+              >
                 <div className="flex flex-col gap-1.5">
                   <label className="font-label-sm text-label-sm text-on-surface-variant">
                     Device ID
@@ -810,7 +940,9 @@ export default function DevicesFleetPage() {
             <div className="bg-surface-container rounded-xl p-gutter-md max-w-md w-full shadow-2xl flex flex-col gap-space-md border border-surface-variant animate-in fade-in zoom-in-95 duration-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-space-xs">
-                  <span className="material-symbols-outlined text-secondary text-[20px]">edit</span>
+                  <span className="material-symbols-outlined text-secondary text-[20px]">
+                    edit
+                  </span>
                   <h3 className="font-headline-sm text-headline-sm text-on-surface font-semibold">
                     Edit Lokasi Device ({editModalData.id})
                   </h3>
@@ -819,10 +951,15 @@ export default function DevicesFleetPage() {
                   className="p-1 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors"
                   onClick={() => setEditModalData(null)}
                 >
-                  <span className="material-symbols-outlined text-[18px]">close</span>
+                  <span className="material-symbols-outlined text-[18px]">
+                    close
+                  </span>
                 </button>
               </div>
-              <form className="flex flex-col gap-space-md" onSubmit={handleSaveEdit}>
+              <form
+                className="flex flex-col gap-space-md"
+                onSubmit={handleSaveEdit}
+              >
                 <div className="flex flex-col gap-1.5">
                   <label className="font-label-sm text-label-sm text-on-surface-variant">
                     Lokasi Fisik
@@ -833,11 +970,15 @@ export default function DevicesFleetPage() {
                     required
                     value={editModalData.location}
                     onChange={(e) =>
-                      setEditModalData({ ...editModalData, location: e.target.value })
+                      setEditModalData({
+                        ...editModalData,
+                        location: e.target.value,
+                      })
                     }
                   />
                   <span className="font-code-sm text-[11px] text-tertiary">
-                    ⚡ Perubahan lokasi akan disinkronkan secara real-time ke player Electron
+                    ⚡ Perubahan lokasi akan disinkronkan secara real-time ke
+                    player Electron
                   </span>
                 </div>
                 <div className="flex items-center justify-end gap-space-sm pt-space-xs">
@@ -884,7 +1025,9 @@ export default function DevicesFleetPage() {
                   className="p-1 rounded-lg text-on-surface-variant hover:bg-surface-container-high"
                   onClick={() => setPushModalData(null)}
                 >
-                  <span className="material-symbols-outlined text-[18px]">close</span>
+                  <span className="material-symbols-outlined text-[18px]">
+                    close
+                  </span>
                 </button>
               </div>
 
@@ -922,7 +1065,9 @@ export default function DevicesFleetPage() {
                   className="px-space-md py-2 rounded-lg bg-primary-container text-on-primary-container font-semibold hover:bg-secondary-container flex items-center gap-1.5 shadow-md active:scale-95"
                   onClick={handleExecutePush}
                 >
-                  <span className="material-symbols-outlined text-[18px]">send</span>
+                  <span className="material-symbols-outlined text-[18px]">
+                    send
+                  </span>
                   <span>Kirim via WebSocket</span>
                 </button>
               </div>
@@ -940,7 +1085,9 @@ export default function DevicesFleetPage() {
             >
               {toast.icon}
             </span>
-            <span className="font-body-md text-body-md text-on-surface">{toast.message}</span>
+            <span className="font-body-md text-body-md text-on-surface">
+              {toast.message}
+            </span>
           </div>
         )}
       </div>

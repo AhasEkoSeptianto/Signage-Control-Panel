@@ -1,4 +1,4 @@
 {
-  "serverUrl": "wss://signage-control-panel.onrender.com/ws",
+  "serverUrl": "ws://localhost:3000/ws",
   "builtAt": "2026-11-11T11:29:12.457Z"
 }

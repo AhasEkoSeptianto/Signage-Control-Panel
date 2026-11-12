@@ -13,7 +13,11 @@ let hubBridge = null;
 let telemetryTimer = null;
 let currentPlayingTitle = "Video Promo Diskon Spesial";
 let activeDeviceId = process.env.DEVICE_ID || "DEV-01";
-const wsServerUrl = process.env.WS_SERVER_URL || process.env.HUB_SERVER_URL || appConfig.serverUrl || "ws://localhost:3000/ws";
+const wsServerUrl =
+  process.env.WS_SERVER_URL ||
+  process.env.HUB_SERVER_URL ||
+  appConfig.serverUrl ||
+  "ws://localhost:3000/ws";
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -31,7 +35,6 @@ function createWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, "index.html"));
-
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
@@ -96,7 +99,9 @@ function startConnection(options) {
     hubBridge?.switchDeviceId(options.deviceId);
   }
 
-  console.log(`[Electron Main] Memulai koneksi ke Hub Server untuk ${activeDeviceId}...`);
+  console.log(
+    `[Electron Main] Memulai koneksi ke Hub Server untuk ${activeDeviceId}...`,
+  );
   hubBridge?.connect();
 
   if (telemetryTimer) clearInterval(telemetryTimer);
