@@ -30,14 +30,24 @@ export default function SimulationPage() {
   const [deviceList, setDeviceList] = useState<DeviceItem[]>([]);
   const [contentList, setContentList] = useState<ContentMediaItem[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("DEV-01");
-  const [activeLocation, setActiveLocation] = useState<string>("Gedung A - Lantai 1");
+  const [activeLocation, setActiveLocation] = useState<string>(
+    "Gedung A - Lantai 1",
+  );
 
   // Playback & Display State
   const [isConnected, setIsConnected] = useState<boolean>(true);
-  const [wsClientStatus, setWsClientStatus] = useState<"connected" | "connecting" | "disconnected">("connecting");
-  const [currentTitle, setCurrentTitle] = useState<string>("Video Promo Diskon Spesial");
-  const [currentDescription, setCurrentDescription] = useState<string>("Menayangkan video promo resolusi tinggi untuk signage display.");
-  const [currentUrl, setCurrentUrl] = useState<string>("https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4");
+  const [wsClientStatus, setWsClientStatus] = useState<
+    "connected" | "connecting" | "disconnected"
+  >("connecting");
+  const [currentTitle, setCurrentTitle] = useState<string>(
+    "Video Promo Diskon Spesial",
+  );
+  const [currentDescription, setCurrentDescription] = useState<string>(
+    "Menayangkan video promo resolusi tinggi untuk signage display.",
+  );
+  const [currentUrl, setCurrentUrl] = useState<string>(
+    "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+  );
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [isMuted, setIsMuted] = useState<boolean>(true);
   const [isCleanMode, setIsCleanMode] = useState<boolean>(false);
@@ -48,7 +58,10 @@ export default function SimulationPage() {
   const [standbyInputId, setStandbyInputId] = useState<string>("");
 
   // Live Toast push notification
-  const [pushToast, setPushToast] = useState<{ message: string; isError?: boolean } | null>(null);
+  const [pushToast, setPushToast] = useState<{
+    message: string;
+    isError?: boolean;
+  } | null>(null);
 
   // Quick Push Tester inside admin toolbar
   const [quickPushUrl, setQuickPushUrl] = useState<string>("");
@@ -118,7 +131,9 @@ export default function SimulationPage() {
           setDeviceList(list);
 
           // If current selectedDeviceId is in list, update activeLocation
-          const matched = list.find((d) => d.id.toUpperCase() === selectedDeviceId.toUpperCase());
+          const matched = list.find(
+            (d) => d.id.toUpperCase() === selectedDeviceId.toUpperCase(),
+          );
           if (matched) {
             setActiveLocation(matched.lokasi);
             if (matched.current_playing) {
@@ -151,20 +166,27 @@ export default function SimulationPage() {
 
   // Establish Live WebSocket connection simulating Electron client
   useEffect(() => {
-    if (typeof window === "undefined" || !isConnected || !selectedDeviceId) return;
+    if (typeof window === "undefined" || !isConnected || !selectedDeviceId)
+      return;
 
     const defaultWsUrl = `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/ws`;
     const targetWsUrl = process.env.NEXT_PUBLIC_WS_URL || defaultWsUrl;
 
     setWsClientStatus("connecting");
-    addLog("INFO", `Menghubungkan Simulator WebSocket sebagai [${selectedDeviceId}]...`);
+    addLog(
+      "INFO",
+      `Menghubungkan Simulator WebSocket sebagai [${selectedDeviceId}]...`,
+    );
 
     const socket = new WebSocket(targetWsUrl);
     wsSimRef.current = socket;
 
     socket.onopen = () => {
       setWsClientStatus("connected");
-      addLog("AUTH", `WebSocket terbuka, mendaftarkan Simulator sebagai Device [${selectedDeviceId}]`);
+      addLog(
+        "AUTH",
+        `WebSocket terbuka, mendaftarkan Simulator sebagai Device [${selectedDeviceId}]`,
+      );
 
       // Register with role "electron"
       socket.send(
@@ -173,7 +195,9 @@ export default function SimulationPage() {
           senderId: selectedDeviceId,
           payload: {
             role: "electron",
-            secretToken: process.env.NEXT_PUBLIC_WS_AUTH_SECRET || "secret_electron_handshake_token_12345",
+            secretToken:
+              process.env.NEXT_PUBLIC_WS_AUTH_SECRET ||
+              "secret_electron_handshake_token_12345",
             deviceMeta: {
               hostname: "Browser-Simulator",
               platform: "Web-Simulated-Player",
@@ -182,7 +206,7 @@ export default function SimulationPage() {
             },
           },
           timestamp: new Date().toISOString(),
-        })
+        }),
       );
     };
 
@@ -194,15 +218,28 @@ export default function SimulationPage() {
           case "AUTH_SUCCESS":
             setWsClientStatus("connected");
             setIsConnected(true);
-            addLog("AUTH", `Autentikasi Sukses: Terverifikasi oleh server pusat`, msg.payload);
-            triggerToast(`✓ Simulator terverifikasi sebagai [${selectedDeviceId}]`);
+            addLog(
+              "AUTH",
+              `Autentikasi Sukses: Terverifikasi oleh server pusat`,
+              msg.payload,
+            );
+            triggerToast(
+              `✓ Simulator terverifikasi sebagai [${selectedDeviceId}]`,
+            );
             break;
 
           case "AUTH_ERROR":
             setWsClientStatus("disconnected");
             setIsConnected(false);
-            addLog("ERROR", `Pendaftaran Ditolak: ${msg.payload?.message || "Device ID tidak valid"}`, msg.payload);
-            triggerToast(`❌ Ditolak Server: ${msg.payload?.message || "ID tidak terdaftar"}`, true);
+            addLog(
+              "ERROR",
+              `Pendaftaran Ditolak: ${msg.payload?.message || "Device ID tidak valid"}`,
+              msg.payload,
+            );
+            triggerToast(
+              `❌ Ditolak Server: ${msg.payload?.message || "ID tidak terdaftar"}`,
+              true,
+            );
             break;
 
           case "DESKTOP_COMMAND":
@@ -211,13 +248,23 @@ export default function SimulationPage() {
             const args = cmdPayload.args || {};
             const targetId = (msg.targetId || selectedDeviceId).toUpperCase();
 
-            addLog("COMMAND", `Perintah diterima: ${command}`, { targetId, args });
+            addLog("COMMAND", `Perintah diterima: ${command}`, {
+              targetId,
+              args,
+            });
 
             // 1. OPEN_URL / PLAY_MEDIA / PUSH_MEDIA
-            if (command === "OPEN_URL" || command === "PLAY_MEDIA" || command === "PUSH_MEDIA") {
+            if (
+              command === "OPEN_URL" ||
+              command === "PLAY_MEDIA" ||
+              command === "PUSH_MEDIA"
+            ) {
               const newUrl = args.url || "";
-              const newTitle = args.title || "Tayangan Baru dari Admin Dashboard";
-              const newDesc = args.description || `Konten push diperbarui secara real-time dari Admin Dashboard pada ${new Date().toLocaleTimeString()} WIB.`;
+              const newTitle =
+                args.title || "Tayangan Baru dari Admin Dashboard";
+              const newDesc =
+                args.description ||
+                `Konten push diperbarui secara real-time dari Admin Dashboard pada ${new Date().toLocaleTimeString()} WIB.`;
 
               if (newUrl) {
                 setCurrentUrl(newUrl);
@@ -240,14 +287,18 @@ export default function SimulationPage() {
                         timestamp: new Date().toISOString(),
                       },
                       timestamp: new Date().toISOString(),
-                    })
+                    }),
                   );
                 }
               }
             }
 
             // 2. UPDATE_DEVICE_CONFIG / UPDATE_LOCATION
-            else if (command === "UPDATE_DEVICE_CONFIG" || command === "UPDATE_LOCATION" || command === "CONFIG_UPDATE") {
+            else if (
+              command === "UPDATE_DEVICE_CONFIG" ||
+              command === "UPDATE_LOCATION" ||
+              command === "CONFIG_UPDATE"
+            ) {
               const newLoc = args.lokasi || args.location;
               if (newLoc) {
                 setActiveLocation(newLoc);
@@ -257,7 +308,9 @@ export default function SimulationPage() {
 
             // 3. NOTIFY
             else if (command === "NOTIFY") {
-              triggerToast(`📢 Notifikasi Admin: ${args.title || ""} - ${args.body || ""}`);
+              triggerToast(
+                `📢 Notifikasi Admin: ${args.title || ""} - ${args.body || ""}`,
+              );
             } else {
               triggerToast(`⚡ Aksi Admin Dijalankan: ${command}`);
             }
@@ -275,7 +328,10 @@ export default function SimulationPage() {
       setWsClientStatus("disconnected");
       if (event.code === 4004 || event.code === 4001 || event.code === 4000) {
         setIsConnected(false);
-        addLog("ERROR", `Koneksi ditutup oleh server (Kode: ${event.code}) - ID Tidak Terdaftar!`);
+        addLog(
+          "ERROR",
+          `Koneksi ditutup oleh server (Kode: ${event.code}) - ID Tidak Terdaftar!`,
+        );
       } else {
         addLog("INFO", `Koneksi WebSocket terputus (Kode: ${event.code}).`);
       }
@@ -287,7 +343,10 @@ export default function SimulationPage() {
     };
 
     return () => {
-      if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+      if (
+        socket.readyState === WebSocket.OPEN ||
+        socket.readyState === WebSocket.CONNECTING
+      ) {
         socket.close();
       }
     };
@@ -296,7 +355,11 @@ export default function SimulationPage() {
   // Keyboard shortcut listener ('C' for Clean mode, 'Space' for play/pause, 'Escape')
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      )
+        return;
 
       if (e.key.toLowerCase() === "c") {
         setIsCleanMode((prev) => !prev);
@@ -328,7 +391,9 @@ export default function SimulationPage() {
 
   // Switch simulated device
   const handleSelectDevice = (devId: string) => {
-    const matched = deviceList.find((d) => d.id.toUpperCase() === devId.toUpperCase());
+    const matched = deviceList.find(
+      (d) => d.id.toUpperCase() === devId.toUpperCase(),
+    );
     setSelectedDeviceId(devId.toUpperCase());
     setIsConnected(true);
     if (matched) {
@@ -360,8 +425,13 @@ export default function SimulationPage() {
     // Check if ID is in registered devices
     const matched = deviceList.find((d) => d.id.toUpperCase() === rawId);
     if (!matched) {
-      alert(`❌ GAGAL TERHUBUNG!\n\nDevice ID "${rawId}" belum didaftarkan di database.\nSilakan daftarkan terlebih dahulu melalui menu Devices & Fleet.`);
-      triggerToast(`❌ Device ID "${rawId}" tidak terdaftar di database!`, true);
+      alert(
+        `❌ GAGAL TERHUBUNG!\n\nDevice ID "${rawId}" belum didaftarkan di database.\nSilakan daftarkan terlebih dahulu melalui menu Devices & Fleet.`,
+      );
+      triggerToast(
+        `❌ Device ID "${rawId}" tidak terdaftar di database!`,
+        true,
+      );
       return;
     }
 
@@ -373,7 +443,10 @@ export default function SimulationPage() {
     setIsConnected(true);
     setStandbyInputId("");
     triggerToast(`✓ Berhasil terhubung ke: ${matched.id}`);
-    addLog("INFO", `Berhasil menghubungkan simulator ke [${matched.id}] (${matched.lokasi})`);
+    addLog(
+      "INFO",
+      `Berhasil menghubungkan simulator ke [${matched.id}] (${matched.lokasi})`,
+    );
   };
 
   // Direct Quick Push Test (Kirim konten langsung dari panel kontrol simulator)
@@ -387,10 +460,16 @@ export default function SimulationPage() {
       // Send command through REST /api/devices or directly simulate WebSocket push
       setCurrentUrl(quickPushUrl.trim());
       setCurrentTitle(title);
-      setCurrentDescription(`Tayangan diuji secara instan melalui Quick Push Tester pada ${new Date().toLocaleTimeString()} WIB.`);
+      setCurrentDescription(
+        `Tayangan diuji secara instan melalui Quick Push Tester pada ${new Date().toLocaleTimeString()} WIB.`,
+      );
       setIsPlaying(true);
       triggerToast(`📡 Push Uji Coba Terkirim: ${title}`);
-      addLog("COMMAND", `Quick Push Tester dieksekusi untuk [${selectedDeviceId}]`, { title, url: quickPushUrl });
+      addLog(
+        "COMMAND",
+        `Quick Push Tester dieksekusi untuk [${selectedDeviceId}]`,
+        { title, url: quickPushUrl },
+      );
     } finally {
       setIsSendingQuickPush(false);
     }
@@ -415,7 +494,9 @@ export default function SimulationPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-md bg-surface-container p-gutter-md rounded-xl shadow-sm border border-surface-variant/30">
           <div className="flex flex-col gap-space-xs">
             <div className="flex items-center gap-space-xs">
-              <span className="material-symbols-outlined text-primary text-2xl">desktop_windows</span>
+              <span className="material-symbols-outlined text-primary text-2xl">
+                desktop_windows
+              </span>
               <h1 className="font-headline-lg text-headline-lg text-on-surface font-semibold tracking-tight">
                 Simulasi Client Player
               </h1>
@@ -424,22 +505,31 @@ export default function SimulationPage() {
               </span>
             </div>
             <p className="font-body-md text-body-md text-on-surface-variant max-w-3xl">
-              Simulator layar client player berbasis web yang identik 100% dengan aplikasi desktop Electron. Menampilkan layout, video player, HUD overlay, serta merespons langsung terhadap push video dan perintah broadcast dari Dashboard secara real-time.
+              Simulator layar client player berbasis web yang identik 100%
+              dengan aplikasi desktop Electron. Menampilkan layout, video
+              player, HUD overlay, serta merespons langsung terhadap push video
+              dan perintah broadcast dari Dashboard secara real-time.
             </p>
           </div>
 
           {/* Quick Metrics */}
           <div className="flex items-center gap-space-md self-start md:self-auto bg-surface-container-high px-space-md py-space-sm rounded-lg border border-surface-variant/30">
             <div className="flex flex-col">
-              <span className="font-label-sm text-label-sm text-on-surface-variant">Device Disimulasikan</span>
+              <span className="font-label-sm text-label-sm text-on-surface-variant">
+                Device Disimulasikan
+              </span>
               <span className="font-code-sm text-xs font-bold text-primary flex items-center gap-1 mt-0.5">
-                <span className="material-symbols-outlined text-[15px]">tv</span>
+                <span className="material-symbols-outlined text-[15px]">
+                  tv
+                </span>
                 {selectedDeviceId}
               </span>
             </div>
             <div className="w-px h-8 bg-surface-variant"></div>
             <div className="flex flex-col">
-              <span className="font-label-sm text-label-sm text-on-surface-variant">Status WebSocket</span>
+              <span className="font-label-sm text-label-sm text-on-surface-variant">
+                Status WebSocket
+              </span>
               <span className="font-code-sm text-xs font-semibold flex items-center gap-1.5 mt-0.5">
                 <span
                   className={`w-2 h-2 rounded-full ${
@@ -448,8 +538,16 @@ export default function SimulationPage() {
                       : "bg-error"
                   }`}
                 ></span>
-                <span className={isConnected && wsClientStatus === "connected" ? "text-tertiary" : "text-error"}>
-                  {isConnected && wsClientStatus === "connected" ? "ONLINE (MIRROR)" : "STANDBY / OFFLINE"}
+                <span
+                  className={
+                    isConnected && wsClientStatus === "connected"
+                      ? "text-tertiary"
+                      : "text-error"
+                  }
+                >
+                  {isConnected && wsClientStatus === "connected"
+                    ? "ONLINE (MIRROR)"
+                    : "STANDBY / OFFLINE"}
                 </span>
               </span>
             </div>
@@ -462,7 +560,9 @@ export default function SimulationPage() {
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2">
               <span className="text-xs font-label-md text-on-surface-variant font-medium flex items-center gap-1">
-                <span className="material-symbols-outlined text-[16px] text-primary">sensors</span>
+                <span className="material-symbols-outlined text-[16px] text-primary">
+                  sensors
+                </span>
                 Pilih Device:
               </span>
               <div className="relative">
@@ -490,7 +590,9 @@ export default function SimulationPage() {
                 className="px-3 py-1.5 rounded-lg text-xs font-code-sm font-semibold transition-all text-error bg-error/10 hover:bg-error/20 border border-error/30 flex items-center gap-1.5 cursor-pointer"
                 title="Beralih ke Layar Standby"
               >
-                <span className="material-symbols-outlined text-[16px]">link_off</span>
+                <span className="material-symbols-outlined text-[16px]">
+                  link_off
+                </span>
                 <span>Masuk Standby</span>
               </button>
             ) : (
@@ -498,7 +600,9 @@ export default function SimulationPage() {
                 onClick={() => setIsConnected(true)}
                 className="px-3 py-1.5 rounded-lg text-xs font-code-sm font-semibold transition-all text-on-primary-container bg-primary-container hover:bg-secondary-container flex items-center gap-1.5 cursor-pointer shadow-sm"
               >
-                <span className="material-symbols-outlined text-[16px]">link</span>
+                <span className="material-symbols-outlined text-[16px]">
+                  link
+                </span>
                 <span>Sambungkan Device</span>
               </button>
             )}
@@ -516,7 +620,9 @@ export default function SimulationPage() {
                 }`}
                 title="Toggle Bingkai Bezel TV Signage"
               >
-                <span className="material-symbols-outlined text-[15px]">tv</span>
+                <span className="material-symbols-outlined text-[15px]">
+                  tv
+                </span>
                 <span>Frame Bezel</span>
               </button>
               <button
@@ -528,7 +634,9 @@ export default function SimulationPage() {
                 }`}
                 title="Mode Layar Bersih (Video Penuh Tanpa HUD, Tekan 'C')"
               >
-                <span className="material-symbols-outlined text-[15px]">visibility</span>
+                <span className="material-symbols-outlined text-[15px]">
+                  visibility
+                </span>
                 <span>Layar Bersih (C)</span>
               </button>
               <button
@@ -536,7 +644,9 @@ export default function SimulationPage() {
                 className="px-2.5 py-1 rounded text-xs font-code-sm text-on-surface-variant hover:text-on-surface flex items-center gap-1 transition-colors"
                 title="Layar Penuh Display"
               >
-                <span className="material-symbols-outlined text-[15px]">fullscreen</span>
+                <span className="material-symbols-outlined text-[15px]">
+                  fullscreen
+                </span>
                 <span>Layar Penuh</span>
               </button>
             </div>
@@ -545,24 +655,22 @@ export default function SimulationPage() {
           {/* Right: Quick Push Tester Directly from Admin */}
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-label-md text-on-surface-variant font-medium flex items-center gap-1">
-              <span className="material-symbols-outlined text-[16px] text-tertiary">send</span>
+              <span className="material-symbols-outlined text-[16px] text-tertiary">
+                send
+              </span>
               Uji Cepat Media:
             </span>
             <select
               value={quickPushUrl}
               onChange={(e) => {
                 setQuickPushUrl(e.target.value);
-                const found = contentList.find((c) => c.payload === e.target.value);
+                const found = contentList.find(
+                  (c) => c.payload === e.target.value,
+                );
                 if (found) setQuickPushTitle(found.judul);
               }}
               className="bg-surface-dim text-on-surface font-code-sm text-xs rounded-lg px-2.5 py-1.5 border border-surface-variant/50 focus:outline-none max-w-[200px] truncate"
             >
-              <option value="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4">
-                Big Buck Bunny (Demo MP4)
-              </option>
-              <option value="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4">
-                Elephants Dream (Demo MP4)
-              </option>
               {contentList.map((c) => (
                 <option key={c.id} value={c.payload}>
                   {c.judul}
@@ -574,7 +682,9 @@ export default function SimulationPage() {
               disabled={isSendingQuickPush || !isConnected}
               className="px-3 py-1.5 rounded-lg text-xs font-code-sm font-semibold text-on-primary-container bg-primary-container hover:bg-secondary-container flex items-center gap-1 transition-all shadow-sm active:scale-95 disabled:opacity-50"
             >
-              <span className="material-symbols-outlined text-[15px]">cell_tower</span>
+              <span className="material-symbols-outlined text-[15px]">
+                cell_tower
+              </span>
               <span>Push ke Simulator</span>
             </button>
           </div>
@@ -584,7 +694,9 @@ export default function SimulationPage() {
         <div
           ref={screenWrapperRef}
           className={`w-full flex flex-col items-center justify-center transition-all duration-300 ${
-            viewBezel ? "p-3 sm:p-6 bg-slate-950/80 rounded-2xl border-4 border-slate-800 shadow-2xl relative" : ""
+            viewBezel
+              ? "p-3 sm:p-6 bg-slate-950/80 rounded-2xl border-4 border-slate-800 shadow-2xl relative"
+              : ""
           }`}
         >
           {/* TV Signage Commercial Top Bezel Label */}
@@ -617,7 +729,9 @@ export default function SimulationPage() {
             {/* Top Electron Header Bar */}
             <header
               className={`w-full bg-surface-container-lowest/95 backdrop-blur-md px-4 py-2.5 flex items-center justify-between border-b border-outline-variant/40 shadow-xl gap-3 z-30 transition-all duration-300 ${
-                isCleanMode ? "opacity-0 -translate-y-full pointer-events-none absolute" : "relative"
+                isCleanMode
+                  ? "opacity-0 -translate-y-full pointer-events-none absolute"
+                  : "relative"
               }`}
             >
               <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -645,7 +759,9 @@ export default function SimulationPage() {
                     }`}
                   ></span>
                   <span className="font-medium text-on-surface">
-                    {isConnected ? `1 Device Terhubung (${selectedDeviceId})` : "0 Device Terhubung (Offline)"}
+                    {isConnected
+                      ? `1 Device Terhubung (${selectedDeviceId})`
+                      : "0 Device Terhubung (Offline)"}
                   </span>
                 </div>
 
@@ -653,7 +769,9 @@ export default function SimulationPage() {
                 <div className="flex items-center gap-1.5 bg-surface-container/70 p-1 rounded-lg border border-outline-variant/30 overflow-x-auto flex-1 min-w-0">
                   {isConnected && (
                     <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-primary-container text-on-primary-container font-code-sm text-xs font-bold shadow-sm">
-                      <span className="material-symbols-outlined text-[14px]">tv</span>
+                      <span className="material-symbols-outlined text-[14px]">
+                        tv
+                      </span>
                       <span>{selectedDeviceId}</span>
                       <button
                         onClick={handleDisconnect}
@@ -672,7 +790,9 @@ export default function SimulationPage() {
                   className="px-2.5 py-1.5 rounded-lg text-xs font-code-sm font-semibold transition-all text-tertiary bg-tertiary/10 hover:bg-tertiary/20 border border-tertiary/30 shrink-0 flex items-center gap-1.5 cursor-pointer shadow-sm"
                   title="Buka Mode Layar Bersih (Video Penuh Tanpa Ikon)"
                 >
-                  <span className="material-symbols-outlined text-[16px]">visibility</span>
+                  <span className="material-symbols-outlined text-[16px]">
+                    visibility
+                  </span>
                   <span className="hidden sm:inline">Layar Bersih</span>
                 </button>
 
@@ -684,12 +804,18 @@ export default function SimulationPage() {
                       ? "text-on-surface-variant bg-surface-container border-outline-variant/40"
                       : "text-tertiary bg-tertiary/10 border-tertiary/30"
                   }`}
-                  title={isMuted ? "Audio Dinonaktifkan (Klik untuk Suara)" : "Audio Aktif"}
+                  title={
+                    isMuted
+                      ? "Audio Dinonaktifkan (Klik untuk Suara)"
+                      : "Audio Aktif"
+                  }
                 >
                   <span className="material-symbols-outlined text-[16px]">
                     {isMuted ? "volume_off" : "volume_up"}
                   </span>
-                  <span className="hidden sm:inline">{isMuted ? "Muted" : "Suara Aktif"}</span>
+                  <span className="hidden sm:inline">
+                    {isMuted ? "Muted" : "Suara Aktif"}
+                  </span>
                 </button>
               </div>
 
@@ -697,14 +823,20 @@ export default function SimulationPage() {
               <div className="flex items-center gap-3 shrink-0">
                 <div className="hidden lg:flex items-center gap-3 bg-surface-container/80 backdrop-blur-md px-3 py-1 rounded-lg border border-outline-variant/30 text-code-sm font-code-sm">
                   <div className="flex items-center gap-1.5 text-on-surface-variant">
-                    <span className="material-symbols-outlined text-[15px] text-outline">location_on</span>
-                    <span>{isConnected ? activeLocation : "Belum Terhubung"}</span>
+                    <span className="material-symbols-outlined text-[15px] text-outline">
+                      location_on
+                    </span>
+                    <span>
+                      {isConnected ? activeLocation : "Belum Terhubung"}
+                    </span>
                   </div>
                   <span className="w-1 h-3 rounded bg-outline-variant"></span>
                   <div className="flex items-center gap-1.5">
                     <span
                       className={`w-2 h-2 rounded-full shadow-sm ${
-                        isConnected ? "bg-tertiary shadow-[0_0_8px_rgba(78,222,163,0.7)]" : "bg-slate-500"
+                        isConnected
+                          ? "bg-tertiary shadow-[0_0_8px_rgba(78,222,163,0.7)]"
+                          : "bg-slate-500"
                       }`}
                     ></span>
                     <span
@@ -719,8 +851,14 @@ export default function SimulationPage() {
 
                 {/* Simulated Window Control buttons */}
                 <div className="flex items-center gap-1.5 text-outline pl-2 border-l border-outline-variant/30">
-                  <div className="w-3 h-3 rounded-full bg-outline-variant cursor-default" title="Minimize"></div>
-                  <div className="w-3 h-3 rounded-full bg-outline-variant cursor-default" title="Maximize"></div>
+                  <div
+                    className="w-3 h-3 rounded-full bg-outline-variant cursor-default"
+                    title="Minimize"
+                  ></div>
+                  <div
+                    className="w-3 h-3 rounded-full bg-outline-variant cursor-default"
+                    title="Maximize"
+                  ></div>
                   <div
                     onClick={handleDisconnect}
                     className="w-3 h-3 rounded-full bg-error/70 hover:bg-error transition-colors cursor-pointer"
@@ -736,7 +874,9 @@ export default function SimulationPage() {
               {!isConnected && (
                 <div className="absolute inset-0 z-30 flex flex-col items-center justify-center p-6 text-center bg-surface-container-lowest">
                   <div className="w-16 h-16 rounded-2xl bg-surface-container-high border border-outline-variant/30 flex items-center justify-center text-outline mb-3 shadow-lg">
-                    <span className="material-symbols-outlined text-4xl text-primary">cast_connected</span>
+                    <span className="material-symbols-outlined text-4xl text-primary">
+                      cast_connected
+                    </span>
                   </div>
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container border border-outline-variant/30 text-xs font-code-sm text-outline mb-2">
                     <span className="w-2 h-2 rounded-full bg-slate-500"></span>
@@ -746,12 +886,18 @@ export default function SimulationPage() {
                     Hubungkan Display Signage
                   </h2>
                   <p className="font-body-sm text-xs text-on-surface-variant max-w-sm mb-4 leading-relaxed">
-                    Masukkan <strong>Device ID</strong> Anda di bawah ini untuk menghubungkan layar signage ini dengan Admin Dashboard.
+                    Masukkan <strong>Device ID</strong> Anda di bawah ini untuk
+                    menghubungkan layar signage ini dengan Admin Dashboard.
                   </p>
 
-                  <form onSubmit={handleStandbyConnect} className="w-full max-w-xs flex flex-col gap-2.5">
+                  <form
+                    onSubmit={handleStandbyConnect}
+                    className="w-full max-w-xs flex flex-col gap-2.5"
+                  >
                     <div className="relative flex items-center">
-                      <span className="material-symbols-outlined absolute left-3 text-outline text-[18px]">badge</span>
+                      <span className="material-symbols-outlined absolute left-3 text-outline text-[18px]">
+                        badge
+                      </span>
                       <input
                         type="text"
                         required
@@ -763,7 +909,9 @@ export default function SimulationPage() {
                     </div>
 
                     <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                      <span className="text-[10px] font-code-sm text-outline">Pilihan Cepat:</span>
+                      <span className="text-[10px] font-code-sm text-outline">
+                        Pilihan Cepat:
+                      </span>
                       {deviceList.slice(0, 4).map((d) => (
                         <button
                           key={d.id}
@@ -780,7 +928,9 @@ export default function SimulationPage() {
                       type="submit"
                       className="w-full mt-1 py-2 rounded-lg bg-primary-container text-on-primary-container hover:bg-blue-600 font-bold text-xs font-code-sm flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer"
                     >
-                      <span className="material-symbols-outlined text-[16px]">link</span>
+                      <span className="material-symbols-outlined text-[16px]">
+                        link
+                      </span>
                       <span>Hubungkan Sekarang</span>
                     </button>
                   </form>
@@ -810,19 +960,27 @@ export default function SimulationPage() {
               {/* Top Playback & Node Info Badges */}
               <div
                 className={`relative z-20 p-space-md sm:p-space-lg flex justify-between items-start transition-opacity duration-300 ${
-                  isCleanMode || !isConnected ? "opacity-0 pointer-events-none" : "opacity-100"
+                  isCleanMode || !isConnected
+                    ? "opacity-0 pointer-events-none"
+                    : "opacity-100"
                 }`}
               >
                 <div className="flex items-center gap-2.5 flex-wrap">
                   <div className="inline-flex items-center gap-1.5 bg-primary-container text-on-primary-container px-3 py-1.5 rounded-lg font-code-sm text-xs font-bold uppercase shadow-lg border border-primary/30">
-                    <span className="material-symbols-outlined text-[16px]">smart_display</span>
+                    <span className="material-symbols-outlined text-[16px]">
+                      smart_display
+                    </span>
                     <span>TIPE: VIDEO</span>
                   </div>
                   <div className="flex items-center gap-2 bg-surface-container-highest/90 backdrop-blur-md text-on-surface font-code-sm text-xs px-3 py-1.5 rounded-lg border border-outline-variant/40 shadow-sm">
-                    <span className="text-primary font-bold">{selectedDeviceId}</span>
+                    <span className="text-primary font-bold">
+                      {selectedDeviceId}
+                    </span>
                     <span className="text-outline">•</span>
                     <span className="text-on-surface-variant flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[14px] text-tertiary">pin_drop</span>
+                      <span className="material-symbols-outlined text-[14px] text-tertiary">
+                        pin_drop
+                      </span>
                       <span>{activeLocation}</span>
                     </span>
                   </div>
@@ -836,7 +994,9 @@ export default function SimulationPage() {
                     }`}
                   ></span>
                   <span className="font-medium tracking-wide">
-                    {isPlaying ? "Pemutaran Aktif (Looping)" : "Video Dijeda (Paused)"}
+                    {isPlaying
+                      ? "Pemutaran Aktif (Looping)"
+                      : "Video Dijeda (Paused)"}
                   </span>
                 </div>
               </div>
@@ -872,7 +1032,9 @@ export default function SimulationPage() {
                       : "bg-primary-container text-on-primary-container border-primary/40"
                   }`}
                 >
-                  <span className="material-symbols-outlined text-tertiary animate-spin text-[18px]">sync</span>
+                  <span className="material-symbols-outlined text-tertiary animate-spin text-[18px]">
+                    sync
+                  </span>
                   <span>{pushToast.message}</span>
                 </div>
               )}
@@ -882,7 +1044,9 @@ export default function SimulationPage() {
                 <div className="absolute top-4 right-4 z-50 transition-all duration-300 flex items-center gap-2">
                   <div className="px-3.5 py-1.5 rounded-full bg-black/85 backdrop-blur-md border border-white/20 text-white text-xs font-code-sm flex items-center gap-2.5 shadow-2xl">
                     <span className="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span>
-                    <span className="font-semibold text-white/90">Mode Layar Bersih</span>
+                    <span className="font-semibold text-white/90">
+                      Mode Layar Bersih
+                    </span>
                     <button
                       onClick={() => setIsCleanMode(false)}
                       className="ml-1.5 px-2.5 py-0.5 rounded-md bg-white/20 hover:bg-error text-white text-[11px] font-bold cursor-pointer transition-colors"
@@ -897,22 +1061,32 @@ export default function SimulationPage() {
               {/* Bottom Content Details & Direct Video Payload Footer */}
               <div
                 className={`relative z-20 p-4 sm:p-6 bg-surface-container-lowest/95 backdrop-blur-md border-t border-outline-variant/30 flex flex-col md:flex-row items-end justify-between gap-4 transition-opacity duration-300 ${
-                  isCleanMode || !isConnected ? "opacity-0 pointer-events-none" : "opacity-100"
+                  isCleanMode || !isConnected
+                    ? "opacity-0 pointer-events-none"
+                    : "opacity-100"
                 }`}
               >
                 <div className="max-w-2xl">
                   <div className="flex flex-wrap items-center gap-2 mb-2 font-code-sm text-[11px]">
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-tertiary/10 border border-tertiary/30 text-tertiary font-bold tracking-wider uppercase">
-                      <span className="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse"></span>Online
+                      <span className="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse"></span>
+                      Online
                     </span>
                     <span className="text-outline-variant">|</span>
                     <span className="text-on-surface-variant flex items-center gap-1.5">
-                      <span className="material-symbols-outlined text-[14px] text-primary">tv</span> Device ID:{" "}
-                      <strong className="text-on-surface font-semibold">{selectedDeviceId}</strong>
+                      <span className="material-symbols-outlined text-[14px] text-primary">
+                        tv
+                      </span>{" "}
+                      Device ID:{" "}
+                      <strong className="text-on-surface font-semibold">
+                        {selectedDeviceId}
+                      </strong>
                     </span>
                     <span className="text-outline-variant">|</span>
                     <span className="text-on-surface-variant flex items-center gap-1.5">
-                      <span className="material-symbols-outlined text-[14px] text-secondary">location_on</span>{" "}
+                      <span className="material-symbols-outlined text-[14px] text-secondary">
+                        location_on
+                      </span>{" "}
                       <span>{activeLocation}</span>
                     </span>
                   </div>
@@ -927,10 +1101,15 @@ export default function SimulationPage() {
                 {/* Payload Video URL Card */}
                 <div className="w-full md:w-auto flex flex-col items-start md:items-end gap-1.5 font-code-sm min-w-0 max-w-full">
                   <div className="text-[10px] text-on-surface-variant uppercase tracking-wider flex items-center gap-1.5 font-semibold">
-                    <span className="material-symbols-outlined text-[13px] text-primary">cloud_sync</span> Payload Video Aktif (Admin Config)
+                    <span className="material-symbols-outlined text-[13px] text-primary">
+                      cloud_sync
+                    </span>{" "}
+                    Payload Video Aktif (Admin Config)
                   </div>
                   <div className="flex items-center gap-2 bg-surface-container px-3 py-1.5 rounded-lg border border-outline-variant/30 max-w-full shadow-inner">
-                    <span className="material-symbols-outlined text-[16px] text-tertiary shrink-0">link</span>
+                    <span className="material-symbols-outlined text-[16px] text-tertiary shrink-0">
+                      link
+                    </span>
                     <span className="text-xs text-primary font-code-sm truncate max-w-[240px] sm:max-w-[320px]">
                       {currentUrl}
                     </span>
@@ -948,7 +1127,9 @@ export default function SimulationPage() {
         <div className="bg-surface-container rounded-xl border border-surface-variant/30 shadow-sm overflow-hidden">
           <div className="p-4 bg-surface-container-high border-b border-surface-variant/30 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-tertiary text-lg">terminal</span>
+              <span className="material-symbols-outlined text-tertiary text-lg">
+                terminal
+              </span>
               <h3 className="font-headline-sm text-sm font-bold text-on-surface">
                 Simulator Real-Time Event Inspector
               </h3>
@@ -976,7 +1157,8 @@ export default function SimulationPage() {
             <div className="p-4 flex flex-col gap-2 max-h-64 overflow-y-auto font-code-sm text-xs">
               {logs.length === 0 ? (
                 <div className="text-center py-6 text-outline">
-                  Belum ada event WebSocket yang tercatat pada sesi simulator ini.
+                  Belum ada event WebSocket yang tercatat pada sesi simulator
+                  ini.
                 </div>
               ) : (
                 logs.map((log) => {
@@ -984,10 +1166,10 @@ export default function SimulationPage() {
                     log.type === "COMMAND"
                       ? "text-primary bg-primary/10 border-primary/30"
                       : log.type === "AUTH"
-                      ? "text-tertiary bg-tertiary/10 border-tertiary/30"
-                      : log.type === "ERROR"
-                      ? "text-error bg-error/10 border-error/30"
-                      : "text-secondary bg-secondary/10 border-secondary/30";
+                        ? "text-tertiary bg-tertiary/10 border-tertiary/30"
+                        : log.type === "ERROR"
+                          ? "text-error bg-error/10 border-error/30"
+                          : "text-secondary bg-secondary/10 border-secondary/30";
 
                   return (
                     <div
@@ -995,12 +1177,18 @@ export default function SimulationPage() {
                       className="flex items-start justify-between gap-3 p-2.5 rounded-lg bg-surface-dim border border-surface-variant/30 transition-all hover:bg-surface-container-high"
                     >
                       <div className="flex items-start gap-2.5 min-w-0">
-                        <span className="text-outline shrink-0 font-mono mt-0.5">{log.time}</span>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase shrink-0 ${badgeColor}`}>
+                        <span className="text-outline shrink-0 font-mono mt-0.5">
+                          {log.time}
+                        </span>
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase shrink-0 ${badgeColor}`}
+                        >
                           {log.type}
                         </span>
                         <div className="flex flex-col min-w-0">
-                          <span className="text-on-surface font-medium truncate">{log.summary}</span>
+                          <span className="text-on-surface font-medium truncate">
+                            {log.summary}
+                          </span>
                           {log.detail && (
                             <pre className="text-[11px] text-on-surface-variant overflow-x-auto mt-1 p-1.5 rounded bg-black/30 font-mono">
                               {JSON.stringify(log.detail, null, 2)}
