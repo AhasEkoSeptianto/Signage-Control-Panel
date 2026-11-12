@@ -647,6 +647,13 @@ export default function DevicesFleetPage() {
                             >
                               <span className="material-symbols-outlined text-[16px]">publish</span>
                             </button>
+                            <a
+                              href={`/simulation?deviceId=${encodeURIComponent(device.id)}`}
+                              className="p-1.5 rounded-lg text-on-surface-variant hover:bg-tertiary-container/30 hover:text-tertiary transition-colors flex items-center justify-center"
+                              title="Buka di Simulasi Player"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">desktop_windows</span>
+                            </a>
                             <button
                               className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors flex items-center justify-center"
                               title="Edit Lokasi"

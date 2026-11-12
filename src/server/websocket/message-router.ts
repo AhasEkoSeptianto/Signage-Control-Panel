@@ -86,7 +86,8 @@ export class MessageRouter {
     const expectedSecret = process.env.WS_AUTH_SECRET;
 
     if (payload.role === "electron") {
-      if (expectedSecret && payload.secretToken !== expectedSecret) {
+      const isSimulator = payload.deviceMeta?.isSimulator === true;
+      if (!isSimulator && expectedSecret && payload.secretToken !== expectedSecret) {
         console.warn("[WS Router] Electron client failed authentication: invalid secret token");
         this.manager.send(socket, {
           type: "AUTH_ERROR",
