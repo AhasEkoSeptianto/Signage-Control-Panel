@@ -181,25 +181,16 @@ export class MessageRouter {
     const args = message.payload.args as any;
 
     // Update state based on command
-    if (command === "UPDATE_DEVICE_CONFIG" && args?.id && args?.lokasi) {
-      await DeviceService.updateLocation(args.id, args.lokasi);
-    }
-    if ((command === "OPEN_URL" || command === "PLAY_MEDIA") && args?.title) {
-      if (targetDeviceId !== "ALL" && targetDeviceId !== "BROADCAST") {
-        await DeviceService.updateCurrentPlaying(targetDeviceId, args.title);
+    if (command === "UPDATE_DEVICE_CONFIG" && args?.id) {
+      if (args.lokasi) {
+        await DeviceService.updateLocation(args.id, args.lokasi);
+      }
+      if (args.nama) {
+        await DeviceService.updateDeviceName(args.id, args.nama);
       }
     }
 
     const commandId = message.payload?.commandId || `cmd-${Date.now()}`;
-
-    // Record command
-    await DeviceService.recordCommand({
-      id: commandId,
-      device_id: targetDeviceId,
-      command,
-      payload: (args as any) || {},
-      status: "sent",
-    });
 
     // Forward to Electron client(s)
     const delivered = this.manager.sendToElectron(targetDeviceId, {
@@ -234,16 +225,9 @@ export class MessageRouter {
   private async handleDesktopCommandResult(
     message: WSMessage<DesktopCommandResultPayload>
   ): Promise<void> {
-    const { commandId, success, result, error } = message.payload;
+    const { commandId, success } = message.payload;
 
     console.log(`[WS Router] Received command result for ${commandId}: success=${success}`);
-
-    await DeviceService.updateCommandResult(
-      commandId,
-      success ? "executed" : "failed",
-      result,
-      error
-    );
 
     this.manager.broadcastToRole("web", {
       type: "DESKTOP_COMMAND_RESULT",
@@ -266,11 +250,6 @@ export class MessageRouter {
 
     const payload = message.payload as any;
     const deviceId = payload?.deviceId || client.info.id;
-    const currentPlaying = payload?.currentPlaying;
-
-    if (currentPlaying) {
-      DeviceService.updateCurrentPlaying(deviceId, currentPlaying);
-    }
 
     // Relay to web dashboards
     this.manager.broadcastToRole("web", {

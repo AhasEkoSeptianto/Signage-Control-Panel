@@ -6,6 +6,7 @@ import { SignageShell } from "@/components/layout/SignageShell";
 
 interface DeviceRow {
   id: string;
+  nama?: string;
   location: string;
   status: "ONLINE" | "OFFLINE";
   currentPlaying: string;
@@ -34,6 +35,7 @@ export default function DevicesFleetPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editModalData, setEditModalData] = useState<{
     id: string;
+    nama: string;
     location: string;
   } | null>(null);
   const [pushModalData, setPushModalData] = useState<{
@@ -45,8 +47,9 @@ export default function DevicesFleetPage() {
   );
   const [pushTitle, setPushTitle] = useState("Video Promo Diskon Spesial");
 
-  // Form input states for adding device (ID and Lokasi only, NO nama node)
+  // Form input states for adding device
   const [inputId, setInputId] = useState("");
+  const [inputNama, setInputNama] = useState("");
   const [inputLokasi, setInputLokasi] = useState("");
 
   // Toast notification state
@@ -57,40 +60,7 @@ export default function DevicesFleetPage() {
   } | null>(null);
 
   // Fleet devices state
-  const [fleetDevices, setFleetDevices] = useState<DeviceRow[]>([
-    {
-      id: "DEV-01",
-      location: "Gedung A - Lantai 1",
-      status: "ONLINE",
-      currentPlaying: "Video Promo Diskon Spesial",
-      lastSeen: "Just now",
-      icon: "tv",
-    },
-    {
-      id: "DEV-02",
-      location: "Kantin Lt. 2",
-      status: "ONLINE",
-      currentPlaying: "Daftar Menu Siang",
-      lastSeen: "3 detik lalu",
-      icon: "restaurant_menu",
-    },
-    {
-      id: "DEV-03",
-      location: "Gedung B - Ruang 301",
-      status: "OFFLINE",
-      currentPlaying: "-",
-      lastSeen: "15 menit lalu",
-      icon: "meeting_room",
-    },
-    {
-      id: "DEV-04",
-      location: "Lobi Belakang",
-      status: "ONLINE",
-      currentPlaying: "Pengumuman Internal",
-      lastSeen: "10 detik lalu",
-      icon: "badge",
-    },
-  ]);
+  const [fleetDevices, setFleetDevices] = useState<DeviceRow[]>([]);
 
   // Merge with real connected Electron clients from WebSocket (100% reactive)
   const mergedDevices = useMemo(() => {
@@ -201,6 +171,7 @@ export default function DevicesFleetPage() {
           setFleetDevices(
             data.devices.map((d: any) => ({
               id: d.id,
+              nama: d.nama || d.name || `Display ${d.id}`,
               location: d.lokasi || d.location || "Gedung Utama",
               status: (d.status === "online" ? "ONLINE" : "OFFLINE") as
                 | "ONLINE"
@@ -265,9 +236,11 @@ export default function DevicesFleetPage() {
     const newId =
       inputId.trim() ||
       `DEV-${String(fleetDevices.length + 1).padStart(2, "0")}`;
+    const finalNama = inputNama.trim() || `Display ${newId}`;
 
     const newDevice: DeviceRow = {
       id: newId,
+      nama: finalNama,
       location: inputLokasi.trim(),
       status: "ONLINE",
       currentPlaying: "Idle / Default",
@@ -283,6 +256,7 @@ export default function DevicesFleetPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         id: newId,
+        nama: finalNama,
         lokasi: inputLokasi.trim(),
         status: "online",
       }),
@@ -291,6 +265,7 @@ export default function DevicesFleetPage() {
     // 2. Broadcast live config to all Electron clients
     sendCommand("ALL", "UPDATE_DEVICE_CONFIG", {
       id: newId,
+      nama: finalNama,
       lokasi: inputLokasi.trim(),
     });
 
@@ -302,7 +277,7 @@ export default function DevicesFleetPage() {
         id: `log-${Date.now()}`,
         time: timeStr,
         deviceId: newId,
-        message: `device registered: ID "${newId}" di "${inputLokasi}"`,
+        message: `device registered: "${finalNama}" (${newId}) di "${inputLokasi}"`,
         type: "tertiary",
         tag: "db_insert",
       },
@@ -310,23 +285,25 @@ export default function DevicesFleetPage() {
     ]);
 
     setInputId("");
+    setInputNama("");
     setInputLokasi("");
     setIsAddModalOpen(false);
-    showToast(`Device ${newId} (${inputLokasi}) berhasil didaftarkan!`);
+    showToast(`Device ${newId} (${finalNama}) berhasil didaftarkan!`);
   };
 
-  // Edit Device Handler (Edit Lokasi in Real-Time)
+  // Edit Device Handler (Edit Nama & Lokasi in Real-Time)
   const handleSaveEdit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editModalData || !editModalData.location.trim()) return;
 
     const updatedLokasi = editModalData.location.trim();
+    const updatedNama = editModalData.nama.trim() || `Display ${editModalData.id}`;
     const targetId = editModalData.id;
 
     // 1. Update local state
     setFleetDevices((prev) =>
       prev.map((d) =>
-        d.id === targetId ? { ...d, location: updatedLokasi } : d,
+        d.id === targetId ? { ...d, nama: updatedNama, location: updatedLokasi } : d,
       ),
     );
 
@@ -336,13 +313,15 @@ export default function DevicesFleetPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         id: targetId,
+        nama: updatedNama,
         lokasi: updatedLokasi,
       }),
     }).catch(() => {});
 
-    // 3. Broadcast real-time location update to Electron clients via WebSocket
+    // 3. Broadcast real-time update to Electron clients via WebSocket
     sendCommand("ALL", "UPDATE_DEVICE_CONFIG", {
       id: targetId,
+      nama: updatedNama,
       lokasi: updatedLokasi,
     });
 
@@ -353,15 +332,15 @@ export default function DevicesFleetPage() {
         id: `log-${Date.now()}`,
         time: timeStr,
         deviceId: targetId,
-        message: `lokasi diperbarui secara realtime: "${updatedLokasi}"`,
+        message: `device updated: "${updatedNama}" (${targetId}) -> "${updatedLokasi}"`,
         type: "secondary",
-        tag: "config_sync",
+        tag: "device_update",
       },
       ...prev,
     ]);
 
-    showToast(`Lokasi device ${targetId} diperbarui: ${updatedLokasi}`);
     setEditModalData(null);
+    showToast(`Data perangkat ${targetId} berhasil diperbarui!`);
   };
 
   // Delete Device Handler
@@ -678,15 +657,20 @@ export default function DevicesFleetPage() {
                         key={device.id}
                         className="hover:bg-surface-container-high/60 transition-colors group border-b border-surface-variant/20 last:border-b-0"
                       >
-                        {/* Device ID */}
+                        {/* Device ID & Nama */}
                         <td className="py-3.5 px-space-md font-code-sm text-code-sm font-mono text-primary font-medium">
                           <div className="flex items-center gap-space-xs">
                             <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
                               {device.icon || "tv"}
                             </span>
-                            <span className="font-bold text-primary">
-                              {device.id}
-                            </span>
+                            <div className="flex flex-col">
+                              <span className="font-bold text-primary">
+                                {device.id}
+                              </span>
+                              <span className="text-[11px] text-on-surface-variant font-sans font-normal">
+                                {device.nama || "Display Signage"}
+                              </span>
+                            </div>
                           </div>
                         </td>
 
@@ -770,10 +754,11 @@ export default function DevicesFleetPage() {
                             </a>
                             <button
                               className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors flex items-center justify-center"
-                              title="Edit Lokasi"
+                              title="Edit Perangkat"
                               onClick={() =>
                                 setEditModalData({
                                   id: device.id,
+                                  nama: device.nama || `Display ${device.id}`,
                                   location: device.location,
                                 })
                               }
@@ -903,6 +888,19 @@ export default function DevicesFleetPage() {
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="font-label-sm text-label-sm text-on-surface-variant">
+                    Nama Display / Layar <span className="text-tertiary">*</span>
+                  </label>
+                  <input
+                    className="w-full bg-surface-container-lowest text-on-surface placeholder:text-outline text-body-md font-body-md px-space-md py-2 rounded-lg outline-none focus:bg-surface-container-high transition-colors border border-surface-variant/40"
+                    placeholder="Contoh: Layar Lobby Utama"
+                    required
+                    type="text"
+                    value={inputNama}
+                    onChange={(e) => setInputNama(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-label-sm text-label-sm text-on-surface-variant">
                     Lokasi Fisik <span className="text-tertiary">*</span>
                   </label>
                   <input
@@ -944,7 +942,7 @@ export default function DevicesFleetPage() {
                     edit
                   </span>
                   <h3 className="font-headline-sm text-headline-sm text-on-surface font-semibold">
-                    Edit Lokasi Device ({editModalData.id})
+                    Edit Perangkat ({editModalData.id})
                   </h3>
                 </div>
                 <button
@@ -960,6 +958,23 @@ export default function DevicesFleetPage() {
                 className="flex flex-col gap-space-md"
                 onSubmit={handleSaveEdit}
               >
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-label-sm text-label-sm text-on-surface-variant">
+                    Nama Display
+                  </label>
+                  <input
+                    className="w-full bg-surface-container-lowest text-on-surface rounded-lg px-space-md py-2 text-body-md border border-surface-variant/40 outline-none focus:bg-surface-container-high"
+                    type="text"
+                    required
+                    value={editModalData.nama}
+                    onChange={(e) =>
+                      setEditModalData({
+                        ...editModalData,
+                        nama: e.target.value,
+                      })
+                    }
+                  />
+                </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="font-label-sm text-label-sm text-on-surface-variant">
                     Lokasi Fisik

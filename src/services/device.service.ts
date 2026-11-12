@@ -3,15 +3,12 @@ import { Database } from "@/types/database";
 
 export interface DeviceRecord {
   id: string;
+  nama: string;
   lokasi: string;
   status: "online" | "offline" | "busy";
   last_seen: string;
-  current_playing?: string;
-  created_at?: string;
-  metadata?: Record<string, unknown>;
 }
 
-type CommandInsert = Database["public"]["Tables"]["desktop_commands"]["Insert"];
 type DeviceInsert = Database["public"]["Tables"]["devices"]["Insert"];
 
 export class DeviceService {
@@ -39,12 +36,10 @@ export class DeviceService {
 
       return data.map((d: any) => ({
         id: d.id,
+        nama: d.nama || d.name || `Display ${d.id}`,
         lokasi: d.lokasi || d.location || "Gedung Utama",
         status: (d.status as any) || "offline",
         last_seen: d.last_seen || new Date().toISOString(),
-        current_playing: d.current_playing || "Idle / Standby",
-        created_at: d.created_at || new Date().toISOString(),
-        metadata: d.metadata || {},
       }));
     } catch (err) {
       console.error("[DeviceService] Unexpected error fetching devices:", err);
@@ -73,12 +68,10 @@ export class DeviceService {
       const row: any = data;
       return {
         id: row.id,
+        nama: row.nama || row.name || `Display ${row.id}`,
         lokasi: row.lokasi || row.location || "Gedung Utama",
         status: (row.status as any) || "offline",
         last_seen: row.last_seen || new Date().toISOString(),
-        current_playing: row.current_playing || "Idle / Standby",
-        created_at: row.created_at || new Date().toISOString(),
-        metadata: row.metadata || {},
       };
     } catch (err) {
       console.error("[DeviceService] Unexpected error finding device by ID:", err);
@@ -91,22 +84,20 @@ export class DeviceService {
    */
   static async registerOrUpdateDevice(deviceData: {
     id: string;
+    nama?: string;
     lokasi?: string;
     status?: "online" | "offline" | "busy";
-    current_playing?: string;
-    metadata?: Record<string, unknown>;
   }): Promise<DeviceRecord> {
     const now = new Date().toISOString();
+    const nama = deviceData.nama || `Display ${deviceData.id}`;
     const lokasi = deviceData.lokasi || "Gedung Utama";
 
     const record: DeviceRecord = {
       id: deviceData.id,
+      nama,
       lokasi,
       status: deviceData.status || "online",
       last_seen: now,
-      current_playing: deviceData.current_playing || "Idle / Standby",
-      created_at: now,
-      metadata: deviceData.metadata || {},
     };
 
     const supabase = getSupabaseAdmin();
@@ -114,11 +105,10 @@ export class DeviceService {
       try {
         const updatePayload: DeviceInsert = {
           id: record.id,
+          nama: record.nama,
           lokasi: record.lokasi,
           status: record.status,
           last_seen: record.last_seen,
-          current_playing: record.current_playing,
-          metadata: record.metadata as any,
         };
 
         await supabase
@@ -139,7 +129,13 @@ export class DeviceService {
     const supabase = getSupabaseAdmin();
     if (supabase) {
       try {
-        await supabase.from("devices").update({ lokasi }).eq("id", deviceId);
+        await supabase
+          .from("devices")
+          .update({
+            lokasi,
+            last_seen: new Date().toISOString(),
+          })
+          .eq("id", deviceId);
       } catch (err) {
         console.error("[DeviceService] Error updating location in Supabase:", err);
       }
@@ -147,21 +143,21 @@ export class DeviceService {
   }
 
   /**
-   * Update currently playing media title in Supabase in real-time
+   * Update device name in Supabase
    */
-  static async updateCurrentPlaying(deviceId: string, currentPlaying: string) {
+  static async updateDeviceName(deviceId: string, nama: string) {
     const supabase = getSupabaseAdmin();
     if (supabase) {
       try {
         await supabase
           .from("devices")
           .update({
-            current_playing: currentPlaying,
+            nama,
             last_seen: new Date().toISOString(),
           })
           .eq("id", deviceId);
       } catch (err) {
-        console.error("[DeviceService] Error updating current_playing in Supabase:", err);
+        console.error("[DeviceService] Error updating name in Supabase:", err);
       }
     }
   }
@@ -201,57 +197,5 @@ export class DeviceService {
       }
     }
     return false;
-  }
-
-  /**
-   * Log a command dispatched to an Electron client in Supabase
-   */
-  static async recordCommand(commandData: CommandInsert) {
-    const supabase = getSupabaseAdmin();
-    if (!supabase) return null;
-
-    try {
-      const { data, error } = await supabase
-        .from("desktop_commands")
-        .insert(commandData)
-        .select()
-        .single();
-
-      if (error) {
-        console.warn("[DeviceService] Error recording command in Supabase:", error.message);
-        return null;
-      }
-      return data;
-    } catch (err) {
-      console.error("[DeviceService] Unexpected error recording command:", err);
-      return null;
-    }
-  }
-
-  /**
-   * Update the execution result of a command in Supabase
-   */
-  static async updateCommandResult(
-    commandId: string,
-    status: "executed" | "failed",
-    result?: unknown,
-    errorMessage?: string
-  ) {
-    const supabase = getSupabaseAdmin();
-    if (!supabase) return null;
-
-    try {
-      await supabase
-        .from("desktop_commands")
-        .update({
-          status,
-          result: (result as any) || null,
-          error_message: errorMessage || null,
-          executed_at: new Date().toISOString(),
-        })
-        .eq("id", commandId);
-    } catch (err) {
-      console.error("[DeviceService] Unexpected error updating command status:", err);
-    }
   }
 }

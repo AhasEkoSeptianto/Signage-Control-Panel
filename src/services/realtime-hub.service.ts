@@ -1,7 +1,6 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { isSupabaseAdminConfigured } from "@/lib/supabase/is-configured";
 import { ConnectionManager } from "@/server/websocket/connection-manager";
-import { DesktopCommandPayload } from "@/types/websocket";
 import { RealtimeChannel } from "@supabase/supabase-js";
 
 let realtimeChannel: RealtimeChannel | null = null;
@@ -19,40 +18,28 @@ export class RealtimeHubService {
       supabase.removeChannel(realtimeChannel);
     }
 
+    // Mendengarkan perubahan tabel devices secara realtime
     realtimeChannel = supabase
-      .channel("mjs-db-changes")
+      .channel("mjs-devices-changes")
       .on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "*",
           schema: "public",
-          table: "desktop_commands",
+          table: "devices",
         },
         async (payload) => {
-          const newRow = payload.new as any;
-          if (!newRow || newRow.status !== "pending") return;
-
           const manager = ConnectionManager.getInstance();
-          const targetDeviceId = newRow.device_id;
-
-          const delivered = manager.sendToElectron(targetDeviceId, {
-            type: "DESKTOP_COMMAND",
+          // Broadcast perubahan perangkat ke semua dashboard web
+          manager.broadcastToRole("web", {
+            type: "DB_SYNC_EVENT",
             payload: {
-              command: newRow.command as DesktopCommandPayload["command"],
-              args: newRow.payload,
-              commandId: newRow.id,
+              table: "devices",
+              eventType: payload.eventType,
+              record: payload.new || payload.old,
             },
-            senderRole: "server",
             timestamp: new Date().toISOString(),
           });
-
-          await supabase
-            .from("desktop_commands")
-            .update({
-              status: delivered ? "sent" : "failed",
-              error_message: delivered ? null : "Perangkat tidak terhubung saat perintah dijadwalkan.",
-            })
-            .eq("id", newRow.id);
         }
       )
       .subscribe();

@@ -147,8 +147,8 @@ export class ContentService {
 
       return {
         id: data.id,
-        judul: data.judul || data.title || "",
-        tipe: data.tipe || data.type || "video",
+        judul: data.judul || (data as any).title || "",
+        tipe: data.tipe || (data as any).type || "video",
         payload: data.payload || data.url || "",
         url: data.url || data.payload || "",
         created_at: data.created_at || new Date().toISOString(),

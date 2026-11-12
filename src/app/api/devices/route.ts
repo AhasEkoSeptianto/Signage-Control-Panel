@@ -19,7 +19,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, lokasi, status, current_playing, location } = body;
+    const { id, nama, name, lokasi, status, location } = body;
 
     if (!id) {
       return NextResponse.json({ error: "Parameter 'id' wajib diisi." }, { status: 400 });
@@ -27,9 +27,9 @@ export async function POST(req: NextRequest) {
 
     const device = await DeviceService.registerOrUpdateDevice({
       id,
+      nama: nama || name || `Display ${id}`,
       lokasi: lokasi || location || "Gedung Utama",
       status: status || "online",
-      current_playing,
     });
 
     return NextResponse.json({

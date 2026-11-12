@@ -5,6 +5,7 @@ import { SignageShell } from "@/components/layout/SignageShell";
 
 interface DeviceItem {
   id: string;
+  nama?: string;
   lokasi: string;
   status?: string;
   current_playing?: string;
@@ -124,6 +125,7 @@ export default function SimulationPage() {
         if (data.devices && Array.isArray(data.devices)) {
           const list: DeviceItem[] = data.devices.map((d: any) => ({
             id: d.id,
+            nama: d.nama || d.name || `Display ${d.id}`,
             lokasi: d.lokasi || d.location || "Gedung Utama",
             status: d.status,
             current_playing: d.current_playing,
@@ -573,7 +575,7 @@ export default function SimulationPage() {
                 >
                   {deviceList.map((d) => (
                     <option key={d.id} value={d.id}>
-                      {d.id} ({d.lokasi})
+                      {d.id} - {d.nama || "Display"} ({d.lokasi})
                     </option>
                   ))}
                 </select>

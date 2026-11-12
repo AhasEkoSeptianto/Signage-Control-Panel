@@ -79,12 +79,6 @@ export class ConnectionManager {
       DeviceService.registerOrUpdateDevice({
         id: info.id,
         status: "online",
-        metadata: {
-          platform: info.deviceMeta?.platform,
-          arch: info.deviceMeta?.arch,
-          appVersion: info.deviceMeta?.appVersion,
-          connectedAt: info.connectedAt,
-        },
       });
     } else {
       console.log(`[WS ConnectionManager] Web client connected: ${info.id}`);
