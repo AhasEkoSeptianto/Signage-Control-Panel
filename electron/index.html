@@ -419,11 +419,9 @@
 
           <!-- Quick sample pills to try -->
           <div class="bg-surface-container-lowest/60 p-2.5 rounded-lg border border-outline-variant/20">
-            <span class="text-[10px] font-code-sm text-outline uppercase tracking-wider block mb-1.5">Contoh Device ID:</span>
-            <div class="flex flex-wrap gap-1.5 font-code-sm text-[11px]">
-              <button class="px-2 py-0.5 rounded bg-surface-container-high hover:bg-primary-container hover:text-on-primary-container text-on-surface-variant transition-colors border border-outline-variant/30 cursor-pointer" onclick="setSampleId('DEV-05')" type="button">DEV-05 (Gedung B)</button>
-              <button class="px-2 py-0.5 rounded bg-surface-container-high hover:bg-primary-container hover:text-on-primary-container text-on-surface-variant transition-colors border border-outline-variant/30 cursor-pointer" onclick="setSampleId('DEV-06')" type="button">DEV-06 (Lift Utama)</button>
-              <button class="px-2 py-0.5 rounded bg-surface-container-high hover:bg-primary-container hover:text-on-primary-container text-on-surface-variant transition-colors border border-outline-variant/30 cursor-pointer" onclick="setSampleId('DEV-07')" type="button">DEV-07 (Auditorium)</button>
+            <span class="text-[10px] font-code-sm text-outline uppercase tracking-wider block mb-1.5">Pilih Device ID Terdaftar dari Dashboard:</span>
+            <div class="flex flex-wrap gap-1.5 font-code-sm text-[11px]" id="sampleDevicePills">
+              <span class="text-[10px] text-outline">Memuat daftar perangkat dari admin...</span>
             </div>
           </div>
 
@@ -810,48 +808,73 @@
       if (input) input.value = id;
     }
 
-    function handleQuickConnect(e) {
+    async function handleQuickConnect(e) {
       if (e) e.preventDefault();
       const input = document.getElementById('quickDeviceIdInput');
       const devId = input ? input.value.trim().toUpperCase() : '';
       if (!devId) return;
 
-      connectDeviceById(devId);
-      if (input) input.value = '';
+      const success = await connectDeviceById(devId);
+      if (success && input) input.value = '';
     }
 
-    function connectDeviceById(devId) {
-      const rawId = devId.toUpperCase();
-      let devData = ADMIN_DEVICE_CATALOG[rawId];
-      if (!devData) {
-        devData = {
-          location: 'Area Publik - Terdaftar di Dashboard',
+    async function connectDeviceById(devId) {
+      const rawId = (devId || '').trim().toUpperCase();
+      if (!rawId) return false;
+
+      const wsUrl = window.desktopHub?.serverUrl || 'ws://localhost:3000/ws';
+      const httpBase = wsUrl.replace(/^ws:/i, 'http:').replace(/^wss:/i, 'https:').replace(/\/ws\/?$/, '');
+
+      try {
+        showToast(`🔍 Memeriksa registrasi Device ID: ${rawId}...`);
+        
+        // 1. Ambil daftar perangkat resmi yang sudah dibuat oleh admin di database
+        const res = await fetch(`${httpBase}/api/devices`);
+        const data = await res.json();
+        const registeredDevices = data?.devices || [];
+
+        // 2. Cocokkan apakah Device ID ini sudah terdaftar
+        const matched = registeredDevices.find(d => d.id.toUpperCase() === rawId);
+
+        if (!matched) {
+          // GAGAL: Device ID tidak ada / salah
+          showToast(`❌ Gagal: Device ID "${rawId}" tidak terdaftar di Dashboard Admin!`, true);
+          alert(`❌ GAGAL TERHUBUNG!\n\nDevice ID "${rawId}" belum didaftarkan oleh Administrator di Dashboard.\n\nSilakan daftarkan perangkat terlebih dahulu melalui menu Devices & Fleet di Dashboard Admin.`);
+          return false;
+        }
+
+        // 3. BERHASIL: Gunakan data resmi dari database
+        const connectedDevice = {
+          id: matched.id,
+          location: matched.lokasi || matched.location || 'Gedung Utama',
           status: 'online',
-          title: `Tayangan Terjadwal: ${rawId} Signage Feed`,
-          desc: `Konten video playlist default disinkronkan otomatis untuk ${rawId}.`,
-          url: `https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4`
+          title: matched.current_playing || `Tayangan: ${matched.id}`,
+          desc: `Terhubung secara resmi ke server pusat untuk ${matched.lokasi || 'Gedung Utama'}.`,
+          url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
         };
+
+        const existingIdx = window.devicesState.findIndex(d => d.id.toUpperCase() === matched.id.toUpperCase());
+        if (existingIdx >= 0) {
+          window.devicesState[existingIdx] = connectedDevice;
+        } else {
+          window.devicesState.push(connectedDevice);
+        }
+
+        localStorage.setItem('electron_active_device_id', matched.id);
+
+        if (window.desktopHub?.connectServer) {
+          window.desktopHub.connectServer({ deviceId: matched.id });
+        }
+
+        syncWithAdminHub();
+        switchDevice(matched.id);
+        showToast(`✓ Berhasil terhubung ke: ${matched.id} (${connectedDevice.location})`);
+        return true;
+      } catch (err) {
+        console.warn('Gagal memverifikasi ke server API:', err);
+        showToast(`❌ Gagal menghubungi server: ${err.message}`, true);
+        return false;
       }
-
-      const connectedDevice = {
-        id: rawId,
-        ...devData
-      };
-
-      const exists = window.devicesState.find(d => d.id === rawId);
-      if (!exists) {
-        window.devicesState.push(connectedDevice);
-      }
-
-      localStorage.setItem('electron_active_device_id', rawId);
-
-      if (window.desktopHub?.connectServer) {
-        window.desktopHub.connectServer({ deviceId: rawId });
-      }
-
-      syncWithAdminHub();
-      switchDevice(rawId);
-      showToast(`✓ Berhasil menghubungkan perangkat: ${rawId}`);
     }
 
     function disconnectCurrentDevice() {
@@ -969,6 +992,32 @@
           input.value = '';
           setTimeout(() => input.focus(), 50);
         }
+
+        // Muat daftar perangkat yang terdaftar di Admin Dashboard
+        const wsUrl = window.desktopHub?.serverUrl || 'ws://localhost:3000/ws';
+        const httpBase = wsUrl.replace(/^ws:/i, 'http:').replace(/^wss:/i, 'https:').replace(/\/ws\/?$/, '');
+        const pillsContainer = document.getElementById('sampleDevicePills');
+        if (pillsContainer) {
+          fetch(`${httpBase}/api/devices`)
+            .then(r => r.json())
+            .then(data => {
+              const devices = data?.devices || [];
+              if (devices.length === 0) {
+                pillsContainer.innerHTML = '<span class="text-[10px] text-outline">Belum ada perangkat terdaftar di dashboard.</span>';
+                return;
+              }
+              pillsContainer.innerHTML = '';
+              devices.forEach(d => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'px-2 py-0.5 rounded bg-surface-container-high hover:bg-primary-container hover:text-on-primary-container text-on-surface-variant transition-colors border border-outline-variant/30 cursor-pointer font-bold';
+                btn.innerText = `${d.id} (${d.lokasi || 'Gedung Utama'})`;
+                btn.onclick = () => setSampleId(d.id);
+                pillsContainer.appendChild(btn);
+              });
+            })
+            .catch(() => {});
+        }
       }
     }
 
@@ -982,8 +1031,8 @@
       if (input) input.value = id;
     }
 
-    function handleConnectDevice(e) {
-      e.preventDefault();
+    async function handleConnectDevice(e) {
+      if (e) e.preventDefault();
       const idInput = document.getElementById('inputDeviceId');
       const rawId = idInput ? idInput.value.trim().toUpperCase() : '';
 
@@ -992,9 +1041,11 @@
         return;
       }
 
-      connectDeviceById(rawId);
-      closeConnectModal();
-      if (idInput) idInput.value = '';
+      const success = await connectDeviceById(rawId);
+      if (success) {
+        closeConnectModal();
+        if (idInput) idInput.value = '';
+      }
     }
 
     let isPlaying = true;
@@ -1034,14 +1085,17 @@
       }
     }
 
-    function showToast(msg) {
+    function showToast(msg, isError = false) {
       const toast = document.getElementById('adminPushToast');
       const msgEl = document.getElementById('adminToastText');
       if (!toast || !msgEl) return;
 
       msgEl.innerText = msg;
-      toast.classList.remove('opacity-0', 'pointer-events-none', '-translate-y-4');
-      toast.classList.add('opacity-100', 'translate-y-0');
+      if (isError) {
+        toast.className = 'absolute top-20 left-1/2 -translate-x-1/2 z-30 bg-error text-on-error px-4 py-2.5 rounded-xl border border-error/50 shadow-2xl flex items-center gap-3 font-code-sm text-xs transition-all duration-300 opacity-100 translate-y-0';
+      } else {
+        toast.className = 'absolute top-20 left-1/2 -translate-x-1/2 z-30 bg-primary-container text-on-primary-container px-4 py-2.5 rounded-xl border border-primary/40 shadow-2xl flex items-center gap-3 font-code-sm text-xs transition-all duration-300 opacity-100 translate-y-0';
+      }
 
       setTimeout(() => {
         toast.classList.remove('opacity-100', 'translate-y-0');
@@ -1084,7 +1138,7 @@
 
     // Electron Preload IPC & Admin Dashboard Live Push Handler
     if (window.desktopHub) {
-      window.desktopHub.onStatusChange((status) => {
+      window.desktopHub.onStatusChange((status, info) => {
         const dot = document.getElementById('headerStatusDot');
         const text = document.getElementById('headerStatusText');
         if (status === 'connected') {
@@ -1095,6 +1149,13 @@
           }
           syncWithAdminHub();
           fetchLiveDeviceLocations();
+        } else if (status === 'rejected' || (info && (info.code === 4004 || info.code === 4001 || info.code === 4000))) {
+          if (dot) dot.className = 'w-2 h-2 rounded-full bg-error shadow-sm';
+          if (text) {
+            text.className = 'text-[11px] font-bold text-error uppercase tracking-wider';
+            text.innerText = 'DITOLAK (ID TIDAK TERDAFTAR)';
+          }
+          showStandbyScreen();
         } else {
           if (dot) dot.className = 'w-2 h-2 rounded-full bg-error shadow-sm';
           if (text) {
@@ -1102,6 +1163,21 @@
             text.innerText = 'Reconnecting';
           }
         }
+      });
+
+      window.desktopHub.onAuthError((error) => {
+        console.warn('[Electron UI] Auth Error / Device ID Ditolak Server:', error);
+        const errMsg = error?.message || 'Device ID tidak terdaftar di database Admin Dashboard.';
+        showToast(`❌ Gagal Konek: ${errMsg}`, true);
+        localStorage.removeItem('electron_active_device_id');
+        window.activeDeviceId = null;
+        window.devicesState = [];
+        showStandbyScreen();
+      });
+
+      window.desktopHub.onAuthSuccess((data) => {
+        console.log('[Electron UI] Device ID Berhasil Terverifikasi:', data);
+        showToast(`✓ Device ID "${data?.deviceId || ''}" terverifikasi server!`);
       });
 
       window.desktopHub.onCommandReceived((commandPayload) => {

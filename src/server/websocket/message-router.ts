@@ -90,15 +90,64 @@ export class MessageRouter {
         console.warn("[WS Router] Electron client failed authentication: invalid secret token");
         this.manager.send(socket, {
           type: "AUTH_ERROR",
-          payload: { message: "Invalid authentication token." },
+          payload: { code: "UNAUTHORIZED", message: "Invalid authentication token." },
           timestamp: new Date().toISOString(),
         });
         socket.close(4001, "Unauthorized");
         return;
       }
+
+      // Validasi: Device ID wajib ada dan HARUS sudah terdaftar di database Admin
+      const requestedId = message.senderId ? message.senderId.trim() : "";
+      if (!requestedId) {
+        console.warn("[WS Router] Registrasi ditolak: Device ID kosong.");
+        this.manager.send(socket, {
+          type: "AUTH_ERROR",
+          payload: { code: "DEVICE_ID_REQUIRED", message: "Device ID wajib disertakan." },
+          timestamp: new Date().toISOString(),
+        });
+        socket.close(4000, "Device ID Missing");
+        return;
+      }
+
+      const existingDevice = await DeviceService.getDeviceById(requestedId);
+      if (!existingDevice) {
+        console.warn(`[WS Router] ❌ Registrasi DITOLAK: Device ID '${requestedId}' tidak ditemukan di database Admin.`);
+        this.manager.send(socket, {
+          type: "AUTH_ERROR",
+          payload: {
+            code: "DEVICE_NOT_FOUND",
+            message: `Device ID '${requestedId}' tidak terdaftar di sistem. Harap hubungi Admin atau daftarkan perangkat terlebih dahulu melalui Dashboard Admin.`,
+          },
+          timestamp: new Date().toISOString(),
+        });
+        socket.close(4004, "Device Not Found");
+        return;
+      }
+
+      // Jika terdaftar, daftarkan socket dan aktifkan status perangkat
+      this.manager.registerClient(socket, {
+        id: existingDevice.id,
+        role: "electron",
+        connectedAt: new Date().toISOString(),
+        lastPing: new Date().toISOString(),
+        deviceMeta: payload.deviceMeta,
+      });
+
+      this.manager.send(socket, {
+        type: "AUTH_SUCCESS",
+        payload: {
+          clientId: existingDevice.id,
+          role: "electron",
+          device: existingDevice,
+          serverTime: new Date().toISOString(),
+        },
+        timestamp: new Date().toISOString(),
+      });
+      return;
     }
 
-    const clientId = message.senderId || (payload.role === "electron" ? `electron-${Date.now()}` : `web-${Date.now()}`);
+    const clientId = message.senderId || `web-${Date.now()}`;
 
     this.manager.registerClient(socket, {
       id: clientId,

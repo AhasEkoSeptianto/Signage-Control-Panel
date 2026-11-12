@@ -26,6 +26,14 @@ export default function ContentMediaPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveToast, setShowSaveToast] = useState(false);
 
+  // Edit modal state
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingContent, setEditingContent] = useState<ContentItem | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editPayload, setEditPayload] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [editFeedback, setEditFeedback] = useState<string | null>(null);
+
   // Search filter
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -170,6 +178,69 @@ export default function ContentMediaPage() {
     setSelectedPushContent(item);
     setPushFeedback(null);
     setPushModalOpen(true);
+  };
+
+  // Open Edit Modal
+  const openEditModal = (item: ContentItem) => {
+    setEditingContent(item);
+    setEditTitle(item.title);
+    setEditPayload(item.payload);
+    setEditFeedback(null);
+    setEditModalOpen(true);
+  };
+
+  // Handle Update Content (Judul & URL Media)
+  const handleUpdateContent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingContent || !editTitle.trim() || !editPayload.trim()) return;
+
+    setIsUpdating(true);
+    setEditFeedback(null);
+
+    try {
+      const finalUrl = editPayload.trim();
+      const finalTitle = editTitle.trim();
+
+      const res = await fetch("/api/contents", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editingContent.id,
+          judul: finalTitle,
+          payload: finalUrl,
+          url: finalUrl,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Gagal memperbarui konten di database");
+      }
+
+      // Update state locally
+      setContents((prev) =>
+        prev.map((c) =>
+          c.id === editingContent.id
+            ? {
+                ...c,
+                title: finalTitle,
+                payload: finalUrl,
+              }
+            : c
+        )
+      );
+
+      setEditFeedback("Konten berhasil diperbarui!");
+      setTimeout(() => {
+        setEditModalOpen(false);
+        setEditingContent(null);
+        setEditFeedback(null);
+      }, 900);
+    } catch (err: any) {
+      alert(`Gagal memperbarui konten: ${err.message || err}`);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   // Execute WebSocket Push
@@ -518,6 +589,13 @@ export default function ContentMediaPage() {
                         <span>Push ke Device</span>
                       </button>
                       <button
+                        className="p-2 text-on-surface-variant hover:text-primary hover:bg-primary-container/20 rounded-lg transition-colors"
+                        title="Edit Judul & Link URL Konten"
+                        onClick={() => openEditModal(item)}
+                      >
+                        <span className="material-symbols-outlined text-[20px]">edit</span>
+                      </button>
+                      <button
                         className="p-2 text-error hover:bg-error-container/20 rounded-lg transition-colors"
                         title="Hapus Konten"
                         onClick={() => handleDeleteContent(item)}
@@ -662,6 +740,139 @@ export default function ContentMediaPage() {
                   )}
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Edit Konten (Judul & URL Media) */}
+        {editModalOpen && editingContent && (
+          <div className="fixed inset-0 z-50 bg-surface-dim/80 backdrop-blur-sm flex items-center justify-center p-gutter animate-in fade-in duration-150">
+            <div className="bg-surface-container max-w-lg w-full rounded-xl shadow-2xl p-gutter-md flex flex-col gap-space-md border border-surface-variant animate-in zoom-in-95 duration-200">
+              <div className="flex items-center justify-between pb-space-xs border-b border-surface-variant/30">
+                <div className="flex items-center gap-space-xs">
+                  <div className="w-8 h-8 rounded-lg bg-primary-container flex items-center justify-center text-on-primary-container shadow-sm">
+                    <span className="material-symbols-outlined text-[18px]">edit_note</span>
+                  </div>
+                  <div>
+                    <h3 className="font-headline-sm text-headline-sm text-on-surface font-semibold">
+                      Edit Konten Media
+                    </h3>
+                    <span className="font-code-sm text-code-sm text-tertiary">
+                      ID: {editingContent.id}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  className="text-on-surface-variant hover:text-on-surface p-1 rounded-lg transition-colors"
+                  onClick={() => setEditModalOpen(false)}
+                >
+                  <span className="material-symbols-outlined text-[20px]">close</span>
+                </button>
+              </div>
+
+              <form onSubmit={handleUpdateContent} className="flex flex-col gap-space-md">
+                {/* Field 1: Judul Konten */}
+                <div className="flex flex-col gap-space-xs">
+                  <label
+                    className="font-label-md text-label-md text-on-surface flex items-center justify-between"
+                    htmlFor="editContentTitle"
+                  >
+                    <span>
+                      Judul Konten Video <span className="text-tertiary">*</span>
+                    </span>
+                  </label>
+                  <input
+                    className="w-full bg-surface-dim text-on-surface placeholder:text-outline rounded-lg px-space-md py-space-sm font-body-md text-body-md focus:outline-none focus:ring-1 focus:ring-primary transition-all border border-surface-variant/40 shadow-inner"
+                    id="editContentTitle"
+                    required
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                  />
+                </div>
+
+                {/* Field 2: Link URL Video */}
+                <div className="flex flex-col gap-space-xs">
+                  <label
+                    className="font-label-md text-label-md text-on-surface flex items-center justify-between"
+                    htmlFor="editContentPayload"
+                  >
+                    <span>
+                      Link URL Video <span className="text-tertiary">*</span>
+                    </span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      className="w-full bg-surface-dim text-on-surface placeholder:text-outline rounded-lg pl-space-md pr-10 py-space-sm font-code-sm text-code-sm focus:outline-none focus:ring-1 focus:ring-primary transition-all border border-surface-variant/40 shadow-inner"
+                      id="editContentPayload"
+                      required
+                      type="url"
+                      value={editPayload}
+                      onChange={(e) => setEditPayload(e.target.value)}
+                    />
+                    <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">
+                      link
+                    </span>
+                  </div>
+                </div>
+
+                {/* Live Preview Box */}
+                {editPayload.trim() && (
+                  <div className="flex flex-col gap-1.5 p-2 rounded-lg bg-surface-dim border border-surface-variant/40">
+                    <span className="font-code-sm text-[10px] text-tertiary uppercase tracking-wider flex items-center gap-1 font-semibold">
+                      <span className="material-symbols-outlined text-[13px]">visibility</span>
+                      Live Preview Video yang Diubah:
+                    </span>
+                    <div className="w-full aspect-video bg-surface-container-lowest rounded overflow-hidden relative border border-white/10">
+                      <video
+                        key={editPayload}
+                        src={`${editPayload}#t=0.5`}
+                        preload="metadata"
+                        controls
+                        muted
+                        playsInline
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {editFeedback && (
+                  <div className="p-space-sm rounded-lg bg-tertiary-container/30 text-on-tertiary-container font-code-sm text-code-sm flex items-center gap-2 border border-tertiary/20 animate-in fade-in">
+                    <span className="material-symbols-outlined text-tertiary text-[18px]">
+                      check_circle
+                    </span>
+                    <span>{editFeedback}</span>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end gap-space-sm pt-space-xs border-t border-surface-variant/30">
+                  <button
+                    type="button"
+                    className="px-space-md py-space-sm rounded-lg font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-high transition-colors"
+                    onClick={() => setEditModalOpen(false)}
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isUpdating}
+                    className="bg-primary-container hover:bg-secondary-container text-on-primary-container px-space-md py-space-sm rounded-lg font-label-md text-label-md font-semibold flex items-center gap-space-xs transition-all shadow-md active:scale-95"
+                  >
+                    {isUpdating ? (
+                      <>
+                        <span className="w-4 h-4 rounded-full border-2 border-on-primary-container border-t-transparent animate-spin"></span>
+                        <span>Menyimpan...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined text-[18px]">save</span>
+                        <span>Simpan Perubahan</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

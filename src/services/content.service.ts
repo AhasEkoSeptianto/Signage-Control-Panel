@@ -99,6 +99,67 @@ export class ContentService {
   }
 
   /**
+   * Update existing content in Supabase
+   */
+  static async updateContent(
+    id: string,
+    updates: {
+      judul?: string;
+      tipe?: string;
+      payload?: string;
+      url?: string;
+    }
+  ): Promise<ContentRecord | null> {
+    const supabase = getSupabaseAdmin();
+    if (!supabase) {
+      throw new Error("Supabase client is not configured or unavailable");
+    }
+
+    const payloadUrl = updates.payload || updates.url;
+    const updateObj: {
+      judul?: string;
+      tipe?: string;
+      payload?: string;
+      url?: string;
+    } = {};
+
+    if (updates.judul !== undefined) updateObj.judul = updates.judul;
+    if (updates.tipe !== undefined) updateObj.tipe = updates.tipe;
+    if (payloadUrl !== undefined) {
+      updateObj.payload = payloadUrl;
+      updateObj.url = payloadUrl;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("contents")
+        .update(updateObj)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("[ContentService] Error updating content in Supabase:", error);
+        throw new Error(error.message);
+      }
+
+      if (!data) return null;
+
+      return {
+        id: data.id,
+        judul: data.judul || data.title || "",
+        tipe: data.tipe || data.type || "video",
+        payload: data.payload || data.url || "",
+        url: data.url || data.payload || "",
+        created_at: data.created_at || new Date().toISOString(),
+      };
+    } catch (err: any) {
+      console.error("[ContentService] Unexpected error updating content:", err);
+      throw err;
+    }
+  }
+
+  /**
    * Delete content by ID directly from Supabase
    */
   static async deleteContent(id: string): Promise<boolean> {

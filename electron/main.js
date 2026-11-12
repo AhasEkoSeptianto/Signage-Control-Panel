@@ -159,9 +159,19 @@ app.whenReady().then(() => {
         mainWindow.webContents.send("hub:command", cmd);
       }
     },
-    onStatusChange: (status) => {
+    onStatusChange: (status, info) => {
       if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send("hub:status", status);
+        mainWindow.webContents.send("hub:status", status, info);
+      }
+    },
+    onAuthError: (error) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send("hub:authError", error);
+      }
+    },
+    onAuthSuccess: (data) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send("hub:authSuccess", data);
       }
     },
   });

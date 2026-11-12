@@ -53,9 +53,18 @@ class ElectronWebSocketBridge {
         this.handleMessage(data.toString());
       });
 
-      this.ws.on("close", (code) => {
-        console.log(`[Electron WS] Disconnected (${code}).`);
-        this.config.onStatusChange?.("disconnected");
+      this.ws.on("close", (code, reason) => {
+        const reasonText = reason ? reason.toString() : "";
+        console.log(`[Electron WS] Disconnected (code: ${code}, reason: ${reasonText}).`);
+        this.config.onStatusChange?.("disconnected", { code, reason: reasonText });
+
+        // Jangan reconnect otomatis jika Device ID ditolak atau token tidak valid
+        if (code === 4004 || code === 4001 || code === 4000) {
+          console.warn("[Electron WS] Koneksi ditolak oleh server, auto-reconnect dibatalkan.");
+          this.manualDisconnect = true;
+          return;
+        }
+
         if (!this.manualDisconnect && !this.isDestroyed) {
           this.scheduleReconnect();
         }
@@ -114,6 +123,18 @@ class ElectronWebSocketBridge {
   async handleMessage(rawMessage) {
     try {
       const message = JSON.parse(rawMessage);
+
+      if (message.type === "AUTH_ERROR") {
+        console.warn("[Electron WS] Autentikasi GAGAL:", message.payload);
+        this.config.onAuthError?.(message.payload);
+        return;
+      }
+
+      if (message.type === "AUTH_SUCCESS") {
+        console.log("[Electron WS] Autentikasi BERHASIL:", message.payload);
+        this.config.onAuthSuccess?.(message.payload);
+        return;
+      }
 
       if (message.type === "DESKTOP_COMMAND") {
         const { command, commandId } = message.payload;

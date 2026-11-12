@@ -53,6 +53,40 @@ export class DeviceService {
   }
 
   /**
+   * Find a specific registered device by ID (case-insensitive)
+   */
+  static async getDeviceById(id: string): Promise<DeviceRecord | null> {
+    const supabase = getSupabaseAdmin();
+    if (!supabase || !id) return null;
+
+    try {
+      const { data, error } = await supabase
+        .from("devices")
+        .select("*")
+        .ilike("id", id.trim())
+        .maybeSingle();
+
+      if (error || !data) {
+        return null;
+      }
+
+      const row: any = data;
+      return {
+        id: row.id,
+        lokasi: row.lokasi || row.location || "Gedung Utama",
+        status: (row.status as any) || "offline",
+        last_seen: row.last_seen || new Date().toISOString(),
+        current_playing: row.current_playing || "Idle / Standby",
+        created_at: row.created_at || new Date().toISOString(),
+        metadata: row.metadata || {},
+      };
+    } catch (err) {
+      console.error("[DeviceService] Unexpected error finding device by ID:", err);
+      return null;
+    }
+  }
+
+  /**
    * Upsert a device when it connects, is added, or updated by admin into Supabase
    */
   static async registerOrUpdateDevice(deviceData: {

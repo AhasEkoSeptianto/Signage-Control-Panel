@@ -47,6 +47,51 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export async function PUT(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { id, judul, tipe, payload, url, title, type } = body;
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "Parameter 'id' wajib diisi untuk memperbarui konten." },
+        { status: 400 }
+      );
+    }
+
+    const contentJudul = judul !== undefined ? judul : title;
+    const contentPayload = payload !== undefined ? payload : url;
+
+    const updated = await ContentService.updateContent(id, {
+      judul: contentJudul,
+      tipe: tipe || type,
+      payload: contentPayload,
+      url: contentPayload,
+    });
+
+    if (!updated) {
+      return NextResponse.json(
+        { error: `Konten dengan ID '${id}' tidak ditemukan.` },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      status: "ok",
+      content: updated,
+    });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err.message || "Failed to update content" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  return PUT(req);
+}
+
 export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);

@@ -18,7 +18,13 @@ contextBridge.exposeInMainWorld("desktopHub", {
     ipcRenderer.on("hub:command", (_event, value) => callback(value));
   },
   onStatusChange: (callback) => {
-    ipcRenderer.on("hub:status", (_event, value) => callback(value));
+    ipcRenderer.on("hub:status", (_event, status, info) => callback(status, info));
+  },
+  onAuthError: (callback) => {
+    ipcRenderer.on("hub:authError", (_event, error) => callback(error));
+  },
+  onAuthSuccess: (callback) => {
+    ipcRenderer.on("hub:authSuccess", (_event, data) => callback(data));
   },
   sendTelemetry: (data) => {
     ipcRenderer.send("hub:telemetry", data);
